@@ -1,6 +1,6 @@
 # TradingView MCP — Claude Instructions
 
-68 tools for reading and controlling a live TradingView Desktop chart via CDP (port 9222).
+75 tools for reading and controlling a live TradingView Desktop chart via CDP (port 9222).
 
 ## Decision Tree — Which Tool When
 
@@ -79,6 +79,17 @@ Use `study_filter` parameter to target a specific indicator by name substring (e
 - `layout_switch` → load a saved layout by name
 - `ui_fullscreen` → toggle fullscreen
 - `capture_screenshot` → take a screenshot (regions: "full", "chart", "strategy_tester")
+
+### "Follow smart-money Solana wallets (copy-trade sniper)"
+1. `sniper_set_api_key` → save free Helius API key (helius.xyz) for rich swap parsing
+2. `sniper_add_wallet` → add a Solana wallet address to track (label it, e.g. "Alpha Whale")
+3. `sniper_scan` → poll all wallets for new swaps; returns token bought/sold + DexScreener data
+4. `sniper_snap_to_token` → resolve a Solana mint and auto-switch TradingView to that chart
+5. `sniper_configure` with `auto_snap: true` → chart switches automatically on every BUY
+6. `sniper_get_history` → recent alert log from previous scans
+7. `sniper_list_wallets` / `sniper_remove_wallet` → manage the watch list
+
+Use `/loop 30s sniper_scan` to poll every 30 seconds for near-real-time alerts.
 
 ### "TradingView isn't running"
 - `tv_launch` → auto-detect and launch TradingView with CDP on Mac/Win/Linux
