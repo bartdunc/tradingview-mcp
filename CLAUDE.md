@@ -1,6 +1,6 @@
 # TradingView MCP — Claude Instructions
 
-68 tools for reading and controlling a live TradingView Desktop chart via CDP (port 9222).
+75 tools for reading and controlling a live TradingView Desktop chart via CDP (port 9222), plus a crypto copy trading system for BitGet futures.
 
 ## Decision Tree — Which Tool When
 
@@ -83,6 +83,28 @@ Use `study_filter` parameter to target a specific indicator by name substring (e
 ### "TradingView isn't running"
 - `tv_launch` → auto-detect and launch TradingView with CDP on Mac/Win/Linux
 - `tv_health_check` → verify connection is working
+
+### "Find profitable crypto traders to copy"
+1. `copier_find_traders` → search BitGet leaderboard with filters (no credentials needed)
+   - `minWinRate: 55`, `maxDrawdown: 20`, `minRoi: 10`, `sortBy: "score"`
+   - Returns ranked list with composite score, ROI, win rate, drawdown, followers
+2. `copier_trader_profile` → deep stats for one trader (symbols, settings)
+3. `copier_trader_positions` → see their live open positions right now
+
+### "Copy a trader's trades automatically"
+Requires `BITGET_API_KEY`, `BITGET_SECRET_KEY`, `BITGET_PASSPHRASE` in `.env`
+1. `copier_follow` with `traderId`, `copyAmount: 50` (USDT per trade), optional `stopLossPercent: 10`
+2. `copier_status` → who you're following + your ROI per trader
+3. `copier_my_positions` → your current copy positions with live PnL
+4. `copier_unfollow` → stop copying (existing positions stay open)
+
+**Recommended sniper workflow:**
+```
+copier_find_traders(minWinRate: 60, maxDrawdown: 15, pageSize: 50, sortBy: "score")
+→ pick top 3 by score
+→ copier_trader_positions(traderId) for each — see what they're in RIGHT NOW
+→ copier_follow(traderId, copyAmount: 25, stopLossPercent: 10)
+```
 
 ## Context Management Rules
 
