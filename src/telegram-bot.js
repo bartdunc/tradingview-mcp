@@ -297,10 +297,10 @@ async function scanLoop(token, chatId, intervalMs) {
   }
 }
 
-// Runs every 60s — checks stop-loss and take-profit on open positions
-async function positionMonitorLoop(token, chatId) {
+// Checks stop-loss and take-profit on open positions (interval configurable, min 30s)
+async function positionMonitorLoop(token, chatId, intervalMs) {
   while (true) {
-    await new Promise(r => setTimeout(r, 60000));
+    await new Promise(r => setTimeout(r, intervalMs));
     try {
       const { actions } = await checkPositions({ config_path: DEFAULT_CONFIG_PATH });
       for (const action of actions) {
@@ -334,13 +334,16 @@ if (!cfg.telegram_chat_id) {
 }
 
 const intervalMs = cfg.poll_interval_ms || 30000;
+// Position monitor runs at 10× the scan interval, minimum 30s (DexScreener rate limit)
+const positionIntervalMs = Math.max(30000, intervalMs * 10);
 const { wallets } = listWallets({ config_path: DEFAULT_CONFIG_PATH });
 
 console.log('✅  Wallet Sniper bot started');
-console.log(`   Wallets   : ${wallets.length}`);
-console.log(`   Interval  : ${intervalMs / 1000}s`);
-console.log(`   Helius    : ${cfg.api_key ? 'configured' : 'NOT SET (basic mode)'}`);
-console.log(`   Auto-trade: ${cfg.auto_trade ? '✅ ENABLED' : 'disabled'}`);
+console.log(`   Wallets        : ${wallets.length}`);
+console.log(`   Scan interval  : ${intervalMs / 1000}s`);
+console.log(`   Position check : ${positionIntervalMs / 1000}s`);
+console.log(`   Helius         : ${cfg.api_key ? 'configured' : 'NOT SET (basic mode)'}`);
+console.log(`   Auto-trade     : ${cfg.auto_trade ? '✅ ENABLED' : 'disabled'}`);
 
 await send(cfg.telegram_token, cfg.telegram_chat_id,
   `🎯 <b>Wallet Sniper Online</b>\n\n` +
@@ -353,5 +356,5 @@ await send(cfg.telegram_token, cfg.telegram_chat_id,
 await Promise.all([
   commandLoop(cfg.telegram_token),
   scanLoop(cfg.telegram_token, cfg.telegram_chat_id, intervalMs),
-  positionMonitorLoop(cfg.telegram_token, cfg.telegram_chat_id),
+  positionMonitorLoop(cfg.telegram_token, cfg.telegram_chat_id, positionIntervalMs),
 ]);
