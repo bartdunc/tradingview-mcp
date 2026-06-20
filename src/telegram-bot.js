@@ -10,10 +10,11 @@
  *  4. Start: npm run telegram-bot
  *
  * Commands inside Telegram:
- *   /start | /help  — show commands
- *   /wallets        — list tracked wallets
- *   /scan           — trigger an immediate scan
- *   /status         — show current config
+ *   /start | /help    — show commands
+ *   /wallets          — list tracked wallets
+ *   /scan             — trigger an immediate scan
+ *   /status           — show current config + auto-trade state
+ *   /positions        — list open positions
  *   /add <address> [label]  — add a wallet
  *   /remove <address>       — remove a wallet
  */
@@ -26,6 +27,7 @@ import {
   removeWallet,
   DEFAULT_CONFIG_PATH,
 } from './core/sniper.js';
+import { checkPositions, listPositions } from './core/trader.js';
 
 const TG = (token) => `https://api.telegram.org/bot${token}`;
 
@@ -50,6 +52,29 @@ function fmtTokenAmount(raw, decimals) {
   if (raw == null || decimals == null) return null;
   const n = Number(raw) / Math.pow(10, decimals);
   return n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+}
+
+function formatTradeResult(tradeResult, symbol) {
+  if (!tradeResult) return '';
+  if (tradeResult.error) return `\n⚠️ <i>Trade failed: ${esc(tradeResult.error)}</i>`;
+  if (tradeResult.skipped) return `\n⏭ <i>Trade skipped: ${esc(tradeResult.reason)}</i>`;
+  return (
+    `\n\n💸 <b>COPY TRADE EXECUTED</b>\n` +
+    `Spent: ${tradeResult.sol_spent} SOL\n` +
+    `Received: ${fmtTokenAmount(null, null) || ''} ${esc(symbol || '')}\n` +
+    `Price impact: ${Number(tradeResult.price_impact_pct || 0).toFixed(2)}%\n` +
+    `<a href="${tradeResult.explorer_url}">🔗 Tx</a>`
+  );
+}
+
+function formatPositionAction(action) {
+  const emoji = action.type === 'TAKE_PROFIT' ? '🤑' : '🛑';
+  return (
+    `${emoji} <b>${action.type.replace('_', ' ')}</b> — ${esc(action.symbol)}\n` +
+    `Change: ${esc(action.change_pct)}\n` +
+    `SOL received: ${Number(action.sol_received || 0).toFixed(4)}\n` +
+    (action.explorer_url ? `<a href="${action.explorer_url}">🔗 Tx</a>` : '')
+  );
 }
 
 function formatAlert(alert) {
@@ -94,6 +119,10 @@ function formatAlert(alert) {
     msg += `\n<b>Mint:</b> <code>${esc(alert.mint)}</code>\n<i>Token data unavailable on DexScreener</i>`;
     if (alert.signature) msg += `\n<a href="https://solscan.io/tx/${alert.signature}">🔗 Tx</a>`;
   }
+
+  // Append trade execution result if auto-trade fired
+  if (alert.trade) msg += formatTradeResult(alert.trade, alert.token?.symbol);
+  if (alert.trade_error) msg += `\n\n⚠️ <i>Trade error: ${esc(alert.trade_error)}</i>`;
 
   return msg;
 }
@@ -218,6 +247,18 @@ async function handleCommand(token, chatId, text) {
         : `❌ ${esc(result.error)}`,
     );
   }
+
+  if (cmd === '/positions') {
+    const { positions } = listPositions({ status: 'open', config_path: DEFAULT_CONFIG_PATH });
+    if (!positions.length) return send(token, chatId, 'No open positions.');
+    const lines = positions.map(p =>
+      `• <b>${esc(p.symbol)}</b>  ${p.sol_spent} SOL in\n` +
+      `  Entry: $${p.entry_price_usd ? Number(p.entry_price_usd).toPrecision(3) : 'N/A'}\n` +
+      `  Opened: ${new Date(p.opened_at).toLocaleTimeString()}\n` +
+      `  Via: ${esc(p.wallet_trigger || 'manual')}`,
+    ).join('\n\n');
+    return send(token, chatId, `<b>Open Positions (${positions.length})</b>\n\n${lines}`);
+  }
 }
 
 // ── Main loops ────────────────────────────────────────────────────────────────
@@ -256,6 +297,25 @@ async function scanLoop(token, chatId, intervalMs) {
   }
 }
 
+// Runs every 60s — checks stop-loss and take-profit on open positions
+async function positionMonitorLoop(token, chatId) {
+  while (true) {
+    await new Promise(r => setTimeout(r, 60000));
+    try {
+      const { actions } = await checkPositions({ config_path: DEFAULT_CONFIG_PATH });
+      for (const action of actions) {
+        const msg = action.error
+          ? `⚠️ Position monitor error: ${esc(action.error)}`
+          : formatPositionAction(action);
+        await send(token, chatId, msg);
+        console.log(`[positions] ${action.type} ${action.symbol || ''} ${action.error || ''}`);
+      }
+    } catch (err) {
+      console.error('[position monitor error]', err.message);
+    }
+  }
+}
+
 // ── Startup ───────────────────────────────────────────────────────────────────
 
 const cfg = loadConfig(DEFAULT_CONFIG_PATH);
@@ -277,18 +337,21 @@ const intervalMs = cfg.poll_interval_ms || 30000;
 const { wallets } = listWallets({ config_path: DEFAULT_CONFIG_PATH });
 
 console.log('✅  Wallet Sniper bot started');
-console.log(`   Wallets : ${wallets.length}`);
-console.log(`   Interval: ${intervalMs / 1000}s`);
-console.log(`   Helius  : ${cfg.api_key ? 'configured' : 'NOT SET (basic mode)'}`);
+console.log(`   Wallets   : ${wallets.length}`);
+console.log(`   Interval  : ${intervalMs / 1000}s`);
+console.log(`   Helius    : ${cfg.api_key ? 'configured' : 'NOT SET (basic mode)'}`);
+console.log(`   Auto-trade: ${cfg.auto_trade ? '✅ ENABLED' : 'disabled'}`);
 
 await send(cfg.telegram_token, cfg.telegram_chat_id,
   `🎯 <b>Wallet Sniper Online</b>\n\n` +
   `Tracking <b>${wallets.length}</b> wallet${wallets.length !== 1 ? 's' : ''}\n` +
-  `Scan every <b>${intervalMs / 1000}s</b>\n\n` +
+  `Scan every <b>${intervalMs / 1000}s</b>\n` +
+  `Auto-trade: ${cfg.auto_trade ? '✅ ON' : '❌ OFF'}\n\n` +
   `Send /help for commands`,
 );
 
 await Promise.all([
   commandLoop(cfg.telegram_token),
   scanLoop(cfg.telegram_token, cfg.telegram_chat_id, intervalMs),
+  positionMonitorLoop(cfg.telegram_token, cfg.telegram_chat_id),
 ]);

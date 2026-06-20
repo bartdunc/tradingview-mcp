@@ -31,6 +31,21 @@ const DEFAULT_CONFIG = {
   wallets: [],
   api_key: '',
   auto_snap: false,
+  auto_trade: false,
+  poll_interval_ms: 30000,
+  telegram_token: '',
+  telegram_chat_id: '',
+  trade: {
+    max_sol_per_trade: 0.1,
+    slippage_bps: 300,
+    min_liquidity_usd: 10000,
+    min_market_cap_usd: 50000,
+    stop_loss_pct: 50,
+    take_profit_pct: 300,
+    max_open_positions: 5,
+    circuit_breaker_sol: 1,
+  },
+  positions: [],
   seen_signatures: {},
   alert_history: [],
 };
@@ -49,17 +64,18 @@ function assertSafeConfigPath(p) {
   }
 }
 
-function loadConfig(configPath) {
+export function loadConfig(configPath) {
   if (configPath !== DEFAULT_CONFIG_PATH) assertSafeConfigPath(configPath);
-  if (!existsSync(configPath)) return { ...DEFAULT_CONFIG };
+  if (!existsSync(configPath)) return structuredClone(DEFAULT_CONFIG);
   try {
-    return { ...DEFAULT_CONFIG, ...JSON.parse(readFileSync(configPath, 'utf8')) };
+    const saved = JSON.parse(readFileSync(configPath, 'utf8'));
+    return { ...DEFAULT_CONFIG, ...saved, trade: { ...DEFAULT_CONFIG.trade, ...(saved.trade || {}) } };
   } catch {
-    return { ...DEFAULT_CONFIG };
+    return structuredClone(DEFAULT_CONFIG);
   }
 }
 
-function saveConfig(cfg, configPath) {
+export function saveConfig(cfg, configPath) {
   // Cap alert history to last 200 entries
   if (cfg.alert_history?.length > 200) cfg.alert_history = cfg.alert_history.slice(0, 200);
   writeFileSync(configPath, JSON.stringify(cfg, null, 2));
@@ -348,12 +364,67 @@ export async function scan({ config_path = DEFAULT_CONFIG_PATH } = {}) {
     }
   }
 
+  // Auto-trade: execute copy buy for each BUY alert
+  const tradeResults = [];
+  if (cfg.auto_trade) {
+    try {
+      const trader = await import('./trader.js');
+      const trade = { ...trader.tradeDefaults(), ...(cfg.trade || {}) };
+
+      // Circuit breaker check
+      try { trader.checkCircuitBreaker(cfg); } catch (cbErr) {
+        tradeResults.push({ error: cbErr.message });
+        cfg.auto_trade = false; // disable until manually re-enabled
+        saveConfig(cfg, config_path);
+      }
+
+      if (cfg.auto_trade) {
+        const openCount = (cfg.positions || []).filter(p => p.status === 'open').length;
+        for (const alert of newAlerts) {
+          if (alert.action !== 'BUY' || !alert.mint || alert.error) continue;
+          if (openCount >= trade.max_open_positions) {
+            tradeResults.push({ skipped: true, reason: 'max_open_positions reached', mint: alert.mint });
+            continue;
+          }
+          // Safety filters
+          const liq = alert.token?.liquidity_usd ?? 0;
+          const mc = alert.token?.market_cap ?? 0;
+          if (liq < trade.min_liquidity_usd) {
+            tradeResults.push({ skipped: true, reason: `liquidity ${liq} < ${trade.min_liquidity_usd}`, mint: alert.mint });
+            continue;
+          }
+          if (mc < trade.min_market_cap_usd) {
+            tradeResults.push({ skipped: true, reason: `market_cap ${mc} < ${trade.min_market_cap_usd}`, mint: alert.mint });
+            continue;
+          }
+          try {
+            const result = await trader.executeBuy({
+              mint: alert.mint,
+              amountSol: trade.max_sol_per_trade,
+              token: alert.token,
+              wallet_label: alert.wallet_label,
+              config_path,
+            });
+            alert.trade = result;
+            tradeResults.push({ mint: alert.mint, symbol: alert.token?.symbol, ...result });
+          } catch (err) {
+            alert.trade_error = err.message;
+            tradeResults.push({ mint: alert.mint, error: err.message });
+          }
+        }
+      }
+    } catch (importErr) {
+      tradeResults.push({ error: `Auto-trade unavailable: ${importErr.message}` });
+    }
+  }
+
   return {
     success: true,
     new_alerts: newAlerts.length,
     alerts: newAlerts,
     wallets_scanned: cfg.wallets.length,
     ...(autoSnapResult && { auto_snap: autoSnapResult }),
+    ...(tradeResults.length && { trades: tradeResults }),
   };
 }
 
