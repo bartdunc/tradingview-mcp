@@ -114,11 +114,24 @@ export function setApiKey({ api_key, config_path = DEFAULT_CONFIG_PATH }) {
   return { success: true, message: 'Helius API key saved to sniper.json' };
 }
 
-export function configure({ auto_snap, config_path = DEFAULT_CONFIG_PATH }) {
+export function configure({ auto_snap, poll_interval_ms, config_path = DEFAULT_CONFIG_PATH }) {
   const cfg = loadConfig(config_path);
   if (auto_snap !== undefined) cfg.auto_snap = auto_snap;
+  if (poll_interval_ms !== undefined) cfg.poll_interval_ms = poll_interval_ms;
   saveConfig(cfg, config_path);
-  return { success: true, auto_snap: cfg.auto_snap };
+  return { success: true, auto_snap: cfg.auto_snap, poll_interval_ms: cfg.poll_interval_ms };
+}
+
+export function setTelegram({ telegram_token, telegram_chat_id, config_path = DEFAULT_CONFIG_PATH }) {
+  const cfg = loadConfig(config_path);
+  if (telegram_token !== undefined) cfg.telegram_token = telegram_token;
+  if (telegram_chat_id !== undefined) cfg.telegram_chat_id = String(telegram_chat_id);
+  saveConfig(cfg, config_path);
+  return {
+    success: true,
+    telegram_token_set: !!cfg.telegram_token,
+    telegram_chat_id: cfg.telegram_chat_id || null,
+  };
 }
 
 // ── Network helpers ───────────────────────────────────────────────────────────

@@ -57,13 +57,28 @@ export function registerSniperTools(server) {
 
   server.tool(
     'sniper_configure',
-    'Configure sniper behaviour. auto_snap=true automatically switches the TradingView chart to the token a tracked wallet just bought.',
+    'Configure sniper behaviour. auto_snap=true automatically switches the TradingView chart to the token a tracked wallet just bought. poll_interval_ms controls how often the Telegram bot scans (default 30000).',
     {
       auto_snap: z.coerce.boolean().optional().describe('Auto-switch TradingView chart when a BUY is detected'),
+      poll_interval_ms: z.coerce.number().optional().describe('Telegram bot scan interval in milliseconds (default 30000)'),
       config_path: cfg,
     },
-    async ({ auto_snap, config_path }) => {
-      try { return jsonResult(core.configure({ auto_snap, config_path })); }
+    async ({ auto_snap, poll_interval_ms, config_path }) => {
+      try { return jsonResult(core.configure({ auto_snap, poll_interval_ms, config_path })); }
+      catch (err) { return jsonResult({ success: false, error: err.message }, true); }
+    },
+  );
+
+  server.tool(
+    'sniper_set_telegram',
+    'Save Telegram bot credentials to sniper.json so the Telegram bot can send alerts. Get a bot token from @BotFather. To find your chat_id: message the bot once, then call the Telegram getUpdates endpoint and copy chat.id.',
+    {
+      telegram_token: z.string().optional().describe('Bot token from @BotFather (e.g. "123456:ABC-xyz…")'),
+      telegram_chat_id: z.union([z.string(), z.number()]).optional().describe('Your Telegram chat/user ID'),
+      config_path: cfg,
+    },
+    async ({ telegram_token, telegram_chat_id, config_path }) => {
+      try { return jsonResult(core.setTelegram({ telegram_token, telegram_chat_id, config_path })); }
       catch (err) { return jsonResult({ success: false, error: err.message }, true); }
     },
   );
