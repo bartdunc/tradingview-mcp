@@ -1,0 +1,10 @@
+{
+  "wallets": [],
+  "api_key": "",
+  "auto_snap": false,
+  "poll_interval_ms": 30000,
+  "telegram_token": "",
+  "telegram_chat_id": "",
+  "seen_signatures": {},
+  "alert_history": []
+}
