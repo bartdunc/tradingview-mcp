@@ -305,6 +305,12 @@ def _plot_equity_curves(per_instrument_results, combined_result, out_path):
     print(f"\nEquity curve chart saved to {out_path}")
 
 
+def _min_bars_required(cfg):
+    """Bars needed before the strategy can generate its first signal at all."""
+    params = cfg["params"]
+    return max(params.get("slow_ema", 0), params.get("lookback", 0), config.ATR_PERIOD) + 2
+
+
 def run(initial_capital=DEFAULT_INITIAL_CAPITAL, months_back=DEFAULT_MONTHS_BACK, slippage_pct=DEFAULT_SLIPPAGE_PCT):
     api = data_utils.get_api()
     end = datetime.now(timezone.utc)
@@ -314,6 +320,13 @@ def run(initial_capital=DEFAULT_INITIAL_CAPITAL, months_back=DEFAULT_MONTHS_BACK
     for symbol, cfg in config.INSTRUMENTS.items():
         print(f"Fetching {months_back} months of {cfg['timeframe']} bars for {symbol}...")
         bars_by_symbol[symbol] = data_utils.fetch_bars(api, symbol, cfg["asset_class"], cfg["timeframe"], start, end)
+        min_bars = _min_bars_required(cfg)
+        bar_count = len(bars_by_symbol[symbol])
+        if bar_count < min_bars * 3:
+            print(
+                f"  NOTE: {symbol} only has {bar_count} bars ({min_bars} needed just to fire once) — "
+                f"results for this instrument are likely too thin a sample to trust."
+            )
 
     per_instrument_results = {}
     per_instrument_metrics = {}
@@ -341,4 +354,12 @@ def run(initial_capital=DEFAULT_INITIAL_CAPITAL, months_back=DEFAULT_MONTHS_BACK
 
 
 if __name__ == "__main__":
-    run()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Backtest the multi-strategy trading bot against Alpaca data.")
+    parser.add_argument("--months", type=int, default=DEFAULT_MONTHS_BACK, help="Months of history to pull (default: 6)")
+    parser.add_argument("--capital", type=float, default=DEFAULT_INITIAL_CAPITAL, help="Starting capital (default: 100000)")
+    parser.add_argument("--slippage", type=float, default=DEFAULT_SLIPPAGE_PCT, help="Slippage per trade as a fraction (default: 0.0005)")
+    args = parser.parse_args()
+
+    run(initial_capital=args.capital, months_back=args.months, slippage_pct=args.slippage)
