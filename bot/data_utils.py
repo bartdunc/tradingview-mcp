@@ -36,6 +36,10 @@ def fetch_bars(api, symbol, asset_class, timeframe_name, start, end=None, limit=
     if asset_class == "crypto":
         bars = api.get_crypto_bars(symbol, **kwargs)
     else:
+        # Free Alpaca data plans only permit the IEX feed for recent data;
+        # the default SIP feed 403s with "subscription does not permit
+        # querying recent SIP data" once the requested range reaches "now".
+        kwargs["feed"] = "iex"
         bars = api.get_bars(symbol, **kwargs)
 
     df = bars.df
