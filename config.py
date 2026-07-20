@@ -20,11 +20,15 @@ DAILY_PNL_LOG_PATH = "daily_pnl.csv"
 LOOP_INTERVAL_SECONDS = 60
 
 INSTRUMENTS = {
-    # Regime-filtered beta (validated OOS): own the asset while it's above its
-    # trend SMA, step to cash below it. Fixed-fractional sizing; the regime flip
-    # is the real exit, the wide ATR stop is only a disaster backstop. Allocations
-    # sized so combined equity beta (SPY+QQQ, highly correlated) ~= 1x, with a
-    # smaller BTC sleeve given crypto's ~3-4x volatility.
+    # Regime-filtered beta (validated OOS + battle-tested across assets and 123yr):
+    # own the asset while it's above its trend SMA, step to cash below it.
+    # Fixed-fractional sizing; the regime flip is the real exit, the wide ATR stop
+    # is only a disaster backstop. Allocations size combined equity beta (SPY+QQQ,
+    # highly correlated) ~= 1x, plus smaller uncorrelated BTC and GLD diversifier
+    # sleeves. USO removed: the oil ETF is structurally broken (contango decay,
+    # -95% buy&hold drawdown 2010-2026) — no strategy fixes a wealth-destroying
+    # instrument. GLD is on regime_beta (clean-data battle test: cuts drawdown,
+    # Sharpe up) as an equity-uncorrelated diversifier.
     "SPY": {
         "asset_class": "us_equity",
         "strategy": "regime_beta",
@@ -45,15 +49,9 @@ INSTRUMENTS = {
     },
     "GLD": {
         "asset_class": "us_equity",
-        "strategy": "trend_following",
-        "timeframe": "4Hour",
-        "params": {"fast_ema": 50, "slow_ema": 200, "trailing_atr_mult": 3.0},
-    },
-    "USO": {
-        "asset_class": "us_equity",
-        "strategy": "trend_following",
-        "timeframe": "4Hour",
-        "params": {"fast_ema": 50, "slow_ema": 200, "trailing_atr_mult": 3.0},
+        "strategy": "regime_beta",
+        "timeframe": "1Day",
+        "params": {"sma_period": 100, "sizing": "fixed_fractional", "allocation": 0.2, "stop_atr_mult": 8.0},
     },
 }
 
