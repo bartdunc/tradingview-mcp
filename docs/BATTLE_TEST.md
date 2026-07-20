@@ -159,6 +159,48 @@ timing, mean-reversion, Bollinger variants, adaptive regime-switch) lost to a si
 fixed trend rule OOS; the durable improvements are *diversification* and *risk
 management*, which is exactly what the multi-asset regime-beta book already leans on.
 
+## The one thing that beat buy-and-hold: diversification
+
+The capstone. Instead of hunting a better signal, combine *uncorrelated* return
+sleeves and size by risk (the professional playbook — risk parity / return stacking).
+Growth of $1, 2012–2026:
+
+| Portfolio | CAGR | maxDD | Sharpe | $1 → |
+|---|---|---|---|---|
+| 100% Equity (SPY) | 14.9% | −33.7% | 0.79 | $7.5 |
+| 60/40 SPY/Bonds | 9.6% | −27.2% | 0.80 | $3.8 |
+| **Equity + Trend (60/40)** | 12.3% | **−23.5%** | **0.87** | $5.4 |
+| **Diversified 3-sleeve** (equity + trend + BTC-trend) | 19.8% | −25.4% | **1.15** | $13.8 |
+
+**Why it works — sleeve correlations to equity:** diversified-trend **0.44**, BTC-trend
+**0.07**, bonds **−0.21**. Uncorrelated sleeves cut risk faster than return → Sharpe rises.
+
+- **The sober, repeatable win is "Equity + Trend"** — Sharpe 0.87 vs 0.79 and drawdown
+  cut from −34% to −23%, *without* any moonshot. This is the durable, honest benefit.
+- **The 3-sleeve's spectacular number is BTC-inflated** — a 20% BTC-trend sleeve captured
+  early-Bitcoin's one-time rise (2012–2017) that will NOT repeat. The *structure* is right;
+  the *19.8% magnitude is optimistic.* Use a forward-realistic (smaller) crypto weight.
+
+**The critical qualifier (learned the hard way):** diversification only helps when the
+sleeves are **fundamentally different return SOURCES.** The win above worked because it
+mixed *equity beta* (Sharpe 0.79) with *trend* (Sharpe 0.72, corr 0.44) — different edges.
+
+Two failed attempts proved the boundary:
+1. **Naive** — bolting hand-picked bond (TLT) + commodity (DBC) sleeves onto the live
+   trend book over 2022–2026 *underperformed* (Sharpe 1.37 vs 1.77): TLT lost on trend
+   (PF 0.12) in a trendless bond market — a sleeve that loses on your strategy is a drag,
+   not a diversifier.
+2. **Proper** — a vol-weighted, many-market trend diversifier stacked on the trend core
+   *still* didn't improve Sharpe (1.15 → 1.14 best), because core-vs-diversifier
+   correlation was **0.48: both are trend-following.** You cannot diversify trend with
+   more trend, even across different markets.
+
+**Conclusion: the live bot is a single, strong, complete TREND source (concentrated
+SPY/QQQ/BTC/GLD, Sharpe ~1.15). It cannot be improved by adding more trend.** A genuine
+diversifier would have to be a *non-trend* return source (carry, volatility premium, or a
+plain buy-and-hold beta anchor) — a separate build. The bot is deliberately kept
+concentrated, because every attempt to "diversify" it with more trend made it worse.
+
 ## Reproducibility
 
 - Long history: Shiller monthly S&P 500 (`github.com/datasets/s-and-p-500`), total
