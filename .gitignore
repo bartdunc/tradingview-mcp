@@ -12,3 +12,20 @@ discovery-log.json
 
 # Install-time symlink created by the one-shot setup
 AGENTS.md
+
+# Trading bot — Python artifacts and generated data, never source
+__pycache__/
+*.pyc
+.venv/
+venv/
+trades.csv
+daily_pnl.csv
+backtest_results.png
+# one-off research/analysis charts
+btc_cycle_map.png
+spread_pnl_chart.png
+spy_stop_candles.png
+cycle_backtest.png
+portfolio_blend.png
+strategy_backtest_curves.png
+
