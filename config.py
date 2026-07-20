@@ -20,23 +20,28 @@ DAILY_PNL_LOG_PATH = "daily_pnl.csv"
 LOOP_INTERVAL_SECONDS = 60
 
 INSTRUMENTS = {
+    # Regime-filtered beta (validated OOS): own the asset while it's above its
+    # trend SMA, step to cash below it. Fixed-fractional sizing; the regime flip
+    # is the real exit, the wide ATR stop is only a disaster backstop. Allocations
+    # sized so combined equity beta (SPY+QQQ, highly correlated) ~= 1x, with a
+    # smaller BTC sleeve given crypto's ~3-4x volatility.
     "SPY": {
         "asset_class": "us_equity",
-        "strategy": "mean_reversion",
-        "timeframe": "15Min",
-        "params": {"lookback": 20, "std_dev_threshold": 1.5, "exit_std_dev": 0.25},
+        "strategy": "regime_beta",
+        "timeframe": "1Day",
+        "params": {"sma_period": 100, "sizing": "fixed_fractional", "allocation": 0.5, "stop_atr_mult": 8.0},
     },
     "QQQ": {
         "asset_class": "us_equity",
-        "strategy": "mean_reversion",
-        "timeframe": "15Min",
-        "params": {"lookback": 20, "std_dev_threshold": 1.8, "exit_std_dev": 0.25},
+        "strategy": "regime_beta",
+        "timeframe": "1Day",
+        "params": {"sma_period": 100, "sizing": "fixed_fractional", "allocation": 0.5, "stop_atr_mult": 8.0},
     },
     "BTC/USD": {
         "asset_class": "crypto",
-        "strategy": "momentum_breakout",
-        "timeframe": "1Hour",
-        "params": {"lookback": 20, "volume_multiplier": 1.5, "trailing_atr_mult": 2.0},
+        "strategy": "regime_beta",
+        "timeframe": "1Day",
+        "params": {"sma_period": 100, "sizing": "fixed_fractional", "allocation": 0.2, "stop_atr_mult": 8.0},
     },
     "GLD": {
         "asset_class": "us_equity",

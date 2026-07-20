@@ -10,6 +10,7 @@ _ALPACA_TIMEFRAMES = {
     "15Min": TimeFrame(15, TimeFrameUnit.Minute),
     "1Hour": TimeFrame(1, TimeFrameUnit.Hour),
     "4Hour": TimeFrame(4, TimeFrameUnit.Hour),
+    "1Day": TimeFrame(1, TimeFrameUnit.Day),
 }
 
 BROKER_SYMBOLS = {symbol: symbol.replace("/", "") for symbol in config.INSTRUMENTS}

@@ -13,6 +13,7 @@ _STRATEGY_MODULES = {
     "mean_reversion": "bot.strategies.mean_reversion",
     "momentum_breakout": "bot.strategies.momentum_breakout",
     "trend_following": "bot.strategies.trend_following",
+    "regime_beta": "bot.strategies.regime_beta",
 }
 
 
@@ -63,10 +64,17 @@ def evaluate(symbol, instrument_cfg, df, portfolio, risk_manager, equity):
             return {"action": "blocked", "symbol": symbol, "price": price}
         if pd.isna(atr) or atr <= 0:
             return None
-        qty = risk_manager.position_size(equity, atr)
+        if params.get("sizing") == "fixed_fractional":
+            # Deploy a fixed fraction of equity; the strategy's own exit is the
+            # primary risk control, with a wide ATR stop as a disaster backstop.
+            qty = risk_manager.fixed_fractional_size(equity, price, params.get("allocation", 0.95))
+            stop_price = risk_manager.atr_stop_price(price, atr, signal, params.get("stop_atr_mult", 8.0))
+        else:
+            stop_atr_mult = params.get("stop_atr_mult", 1.0)
+            qty = risk_manager.position_size(equity, atr, stop_atr_mult)
+            stop_price = risk_manager.hard_stop_price(price, equity, qty, signal)
         if qty <= 0:
             return None
-        stop_price = risk_manager.hard_stop_price(price, equity, qty, signal)
         trailing_mult = params.get("trailing_atr_mult")
         portfolio.open_position(symbol, signal, qty, price, stop_price, atr, trailing_mult)
         return {

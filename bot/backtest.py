@@ -27,6 +27,12 @@ DEFAULT_INITIAL_CAPITAL = 100_000.0
 DEFAULT_SLIPPAGE_PCT = 0.0005  # 0.05% per trade
 DEFAULT_MONTHS_BACK = 6
 
+# Below this many closed trades, an annualized Sharpe computed off a sparse,
+# mostly-flat equity curve is dominated by discretization noise (long runs of
+# exact-zero daily returns deflate the std and blow up |Sharpe|). We report it
+# as N/A instead and judge low-sample strategies on expectancy / PF / drawdown.
+MIN_TRADES_FOR_SHARPE = 30
+
 
 def _apply_slippage(price, direction, slippage_pct, entering):
     """Buys execute slightly worse (higher fill); sells execute slightly worse (lower fill)."""
@@ -45,7 +51,7 @@ def _mark_to_market(portfolio, last_price, realized_equity):
     return realized_equity + unrealized
 
 
-def run_single_instrument_backtest(symbol, instrument_cfg, bars_df, initial_capital, slippage_pct, atr_period):
+def run_single_instrument_backtest(symbol, instrument_cfg, bars_df, initial_capital, slippage_pct, atr_period, halt_on_circuit_breaker=True):
     portfolio = Portfolio(correlation_filter=[])
     risk_manager = RiskManager(
         risk_per_trade=config.RISK_PER_TRADE,
@@ -100,7 +106,7 @@ def run_single_instrument_backtest(symbol, instrument_cfg, bars_df, initial_capi
         peak_equity = max(peak_equity, mark_to_market_equity)
         equity_curve.append((ts, mark_to_market_equity))
 
-        if risk_manager.circuit_breaker_triggered(mark_to_market_equity, peak_equity):
+        if halt_on_circuit_breaker and risk_manager.circuit_breaker_triggered(mark_to_market_equity, peak_equity):
             halted = True
 
     closed_trades = [t for t in trades if t["exit_time"] is not None]
@@ -111,7 +117,7 @@ def run_single_instrument_backtest(symbol, instrument_cfg, bars_df, initial_capi
     }
 
 
-def run_combined_backtest(bars_by_symbol, initial_capital, slippage_pct, atr_period):
+def run_combined_backtest(bars_by_symbol, initial_capital, slippage_pct, atr_period, halt_on_circuit_breaker=True):
     portfolio = Portfolio(correlation_filter=config.CORRELATION_FILTER)
     risk_manager = RiskManager(
         risk_per_trade=config.RISK_PER_TRADE,
@@ -174,7 +180,7 @@ def run_combined_backtest(bars_by_symbol, initial_capital, slippage_pct, atr_per
         peak_equity = max(peak_equity, mark_to_market_equity)
         equity_curve.append((ts, mark_to_market_equity))
 
-        if risk_manager.circuit_breaker_triggered(mark_to_market_equity, peak_equity):
+        if halt_on_circuit_breaker and risk_manager.circuit_breaker_triggered(mark_to_market_equity, peak_equity):
             halted = True
 
     closed_trades = [t for t in trades if t["exit_time"] is not None]
@@ -185,7 +191,18 @@ def run_combined_backtest(bars_by_symbol, initial_capital, slippage_pct, atr_per
     }
 
 
-def compute_metrics(trades, equity_curve, initial_capital):
+def compute_metrics(trades, equity_curve, initial_capital, periods_per_year=252):
+    """Backtest performance metrics.
+
+    `periods_per_year` sets the annualization factor for the daily Sharpe: 252
+    for equities (trading-day calendar) and 365 for 24/7 crypto. The annualized
+    Sharpe is only reported once there are at least MIN_TRADES_FOR_SHARPE closed
+    trades; below that it is returned as None (see the constant's rationale).
+
+    `expectancy` (mean PnL per trade) and `trade_sharpe` (mean/std of per-trade
+    PnL, no annualization) are robust at low trade counts and are the intended
+    primary scorecard alongside total_return, profit_factor, and max_drawdown.
+    """
     if not trades or not equity_curve:
         return {
             "total_trades": 0,
@@ -193,8 +210,10 @@ def compute_metrics(trades, equity_curve, initial_capital):
             "avg_win": 0.0,
             "avg_loss": 0.0,
             "profit_factor": 0.0,
+            "expectancy": 0.0,
+            "trade_sharpe": None,
             "max_drawdown": 0.0,
-            "sharpe_ratio": 0.0,
+            "sharpe_ratio": None,
             "total_return": 0.0,
         }
 
@@ -209,6 +228,15 @@ def compute_metrics(trades, equity_curve, initial_capital):
     gross_loss = abs(sum(losses))
     profit_factor = gross_profit / gross_loss if gross_loss > 0 else float("inf")
 
+    # Per-trade stats — no zero-day dilution, no annualization guesswork.
+    expectancy = sum(pnls) / len(pnls)
+    pnl_series = pd.Series(pnls, dtype="float64")
+    trade_sharpe = (
+        pnl_series.mean() / pnl_series.std(ddof=1)
+        if len(pnls) > 1 and pnl_series.std(ddof=1) > 0
+        else None
+    )
+
     equity_series = pd.Series(
         [e for _, e in equity_curve], index=pd.DatetimeIndex([t for t, _ in equity_curve])
     )
@@ -218,10 +246,17 @@ def compute_metrics(trades, equity_curve, initial_capital):
     drawdown_series = (daily_equity / daily_equity.cummax()) - 1
     max_drawdown = abs(drawdown_series.min()) if not drawdown_series.empty else 0.0
 
-    if len(daily_returns) > 1 and daily_returns.std(ddof=0) > 0:
-        sharpe_ratio = (daily_returns.mean() / daily_returns.std(ddof=0)) * (252 ** 0.5)
+    # Annualized Sharpe is only meaningful with enough trades to populate the
+    # equity curve; below the threshold the mostly-zero daily series makes it
+    # noise, so we withhold it rather than report a misleading number.
+    if (
+        len(pnls) >= MIN_TRADES_FOR_SHARPE
+        and len(daily_returns) > 1
+        and daily_returns.std(ddof=1) > 0
+    ):
+        sharpe_ratio = (daily_returns.mean() / daily_returns.std(ddof=1)) * (periods_per_year ** 0.5)
     else:
-        sharpe_ratio = 0.0
+        sharpe_ratio = None
 
     final_equity = equity_curve[-1][1]
     total_return = (final_equity - initial_capital) / initial_capital
@@ -232,52 +267,50 @@ def compute_metrics(trades, equity_curve, initial_capital):
         "avg_win": avg_win,
         "avg_loss": avg_loss,
         "profit_factor": profit_factor,
+        "expectancy": expectancy,
+        "trade_sharpe": trade_sharpe,
         "max_drawdown": max_drawdown,
         "sharpe_ratio": sharpe_ratio,
         "total_return": total_return,
     }
 
 
-def _print_summary(per_instrument_metrics, combined_metrics):
-    header = ["Instrument", "Trades", "Win Rate", "Avg Win", "Avg Loss", "Profit Factor", "Max DD", "Sharpe", "Total Return"]
-    rows = []
-    for symbol, m in per_instrument_metrics.items():
-        rows.append(
-            [
-                symbol,
-                m["total_trades"],
-                f"{m['win_rate']:.1%}",
-                f"${m['avg_win']:.2f}",
-                f"${m['avg_loss']:.2f}",
-                f"{m['profit_factor']:.2f}",
-                f"{m['max_drawdown']:.1%}",
-                f"{m['sharpe_ratio']:.2f}",
-                f"{m['total_return']:.1%}",
-            ]
-        )
-    rows.append(
-        [
-            "COMBINED",
-            combined_metrics["total_trades"],
-            f"{combined_metrics['win_rate']:.1%}",
-            f"${combined_metrics['avg_win']:.2f}",
-            f"${combined_metrics['avg_loss']:.2f}",
-            f"{combined_metrics['profit_factor']:.2f}",
-            f"{combined_metrics['max_drawdown']:.1%}",
-            f"{combined_metrics['sharpe_ratio']:.2f}",
-            f"{combined_metrics['total_return']:.1%}",
-        ]
-    )
+def _fmt_metric_row(label, m):
+    def num(value, spec):
+        return "N/A" if value is None else format(value, spec)
+
+    return [
+        label,
+        m["total_trades"],
+        f"{m['win_rate']:.1%}",
+        f"${m['avg_win']:.2f}",
+        f"${m['avg_loss']:.2f}",
+        f"{m['profit_factor']:.2f}",
+        f"${m['expectancy']:.2f}",
+        num(m["trade_sharpe"], ".2f"),
+        f"{m['max_drawdown']:.1%}",
+        num(m["sharpe_ratio"], ".2f"),
+        f"{m['total_return']:.1%}",
+    ]
+
+
+def _print_summary(per_instrument_metrics, combined_metrics, months_back):
+    header = [
+        "Instrument", "Trades", "Win Rate", "Avg Win", "Avg Loss", "Profit Factor",
+        "Expectancy", "Trade Sharpe", "Max DD", "Sharpe", "Total Return",
+    ]
+    rows = [_fmt_metric_row(symbol, m) for symbol, m in per_instrument_metrics.items()]
+    rows.append(_fmt_metric_row("COMBINED", combined_metrics))
 
     widths = [max(len(str(row[i])) for row in ([header] + rows)) for i in range(len(header))]
-    print("\nBACKTEST SUMMARY (6 months, correlation filter active on COMBINED row)")
+    print(f"\nBACKTEST SUMMARY ({months_back} months, correlation filter active on COMBINED row)")
     print(" | ".join(h.ljust(widths[i]) for i, h in enumerate(header)))
     print("-+-".join("-" * w for w in widths))
     for row in rows:
         print(" | ".join(str(v).ljust(widths[i]) for i, v in enumerate(row)))
 
 
-def _plot_equity_curves(per_instrument_results, combined_result, out_path):
+def _plot_equity_curves(per_instrument_results, combined_result, out_path, months_back):
     import matplotlib
 
     matplotlib.use("Agg")
@@ -294,7 +327,7 @@ def _plot_equity_curves(per_instrument_results, combined_result, out_path):
         times, values = zip(*combined_result["equity_curve"])
         ax.plot(times, values, label="COMBINED", color="black", linewidth=2.5)
 
-    ax.set_title("Backtest Equity Curves — 6 Months")
+    ax.set_title(f"Backtest Equity Curves — {months_back} Months")
     ax.set_xlabel("Date")
     ax.set_ylabel("Equity ($)")
     ax.legend(loc="upper left", fontsize=8)
@@ -311,7 +344,14 @@ def _min_bars_required(cfg):
     return max(params.get("slow_ema", 0), params.get("lookback", 0), config.ATR_PERIOD) + 2
 
 
-def run(initial_capital=DEFAULT_INITIAL_CAPITAL, months_back=DEFAULT_MONTHS_BACK, slippage_pct=DEFAULT_SLIPPAGE_PCT):
+def run(initial_capital=DEFAULT_INITIAL_CAPITAL, months_back=DEFAULT_MONTHS_BACK, slippage_pct=DEFAULT_SLIPPAGE_PCT,
+        halt_on_circuit_breaker=False):
+    # Evaluation default: DON'T permanently halt on the circuit breaker. The
+    # live bot flattens and stops after a 10% portfolio drawdown, but reusing
+    # that in a backtest truncates the sample to "until the first bad drawdown"
+    # (e.g. SPY halted 2 days into a 24-month window), which defeats the point
+    # of measuring the strategy across the whole period. Pass --live-halt to
+    # reproduce the live behavior instead.
     api = data_utils.get_api()
     end = datetime.now(timezone.utc)
     start = end - relativedelta(months=months_back)
@@ -332,20 +372,48 @@ def run(initial_capital=DEFAULT_INITIAL_CAPITAL, months_back=DEFAULT_MONTHS_BACK
     per_instrument_metrics = {}
     for symbol, cfg in config.INSTRUMENTS.items():
         df = bars_by_symbol[symbol]
-        result = run_single_instrument_backtest(symbol, cfg, df, initial_capital, slippage_pct, config.ATR_PERIOD)
+        result = run_single_instrument_backtest(
+            symbol, cfg, df, initial_capital, slippage_pct, config.ATR_PERIOD,
+            halt_on_circuit_breaker=halt_on_circuit_breaker,
+        )
         per_instrument_results[symbol] = result
-        per_instrument_metrics[symbol] = compute_metrics(result["trades"], result["equity_curve"], initial_capital)
+        periods = 365 if cfg["asset_class"] == "crypto" else 252
+        per_instrument_metrics[symbol] = compute_metrics(
+            result["trades"], result["equity_curve"], initial_capital, periods_per_year=periods
+        )
 
-    combined_result = run_combined_backtest(bars_by_symbol, initial_capital, slippage_pct, config.ATR_PERIOD)
-    combined_metrics = compute_metrics(combined_result["trades"], combined_result["equity_curve"], initial_capital)
+    combined_result = run_combined_backtest(
+        bars_by_symbol, initial_capital, slippage_pct, config.ATR_PERIOD,
+        halt_on_circuit_breaker=halt_on_circuit_breaker,
+    )
+    # Combined curve is calendar-day and spans 24/7 crypto, so annualize on 365.
+    combined_metrics = compute_metrics(
+        combined_result["trades"], combined_result["equity_curve"], initial_capital, periods_per_year=365
+    )
 
-    _print_summary(per_instrument_metrics, combined_metrics)
-    _plot_equity_curves(per_instrument_results, combined_result, "backtest_results.png")
+    mode = "live-halt (stops on 10% drawdown)" if halt_on_circuit_breaker else "eval (trades through drawdowns, full-window sample)"
+    print(f"\nCircuit-breaker mode: {mode}")
+    _print_summary(per_instrument_metrics, combined_metrics, months_back)
+    _plot_equity_curves(per_instrument_results, combined_result, "backtest_results.png", months_back)
 
-    negative_sharpe = [s for s, m in per_instrument_metrics.items() if m["sharpe_ratio"] < 0]
-    if negative_sharpe:
-        print(f"\nFLAGGED — negative Sharpe ratio over the {months_back}-month backtest: {', '.join(negative_sharpe)}")
-        print("Adjust these strategies' parameters before paper or live trading.")
+    # Judge the edge on per-trade expectancy, which is meaningful at low sample
+    # sizes; negative expectancy means the strategy loses money per trade on
+    # average regardless of how the (withheld) annualized Sharpe looks.
+    negative_expectancy = [
+        s for s, m in per_instrument_metrics.items()
+        if m["total_trades"] > 0 and m["expectancy"] <= 0
+    ]
+    if negative_expectancy:
+        print(f"\nFLAGGED — negative per-trade expectancy over the {months_back}-month backtest: {', '.join(negative_expectancy)}")
+        print("These lose money per trade on average; fix entries/exits before paper or live trading.")
+
+    low_sample = [
+        s for s, m in per_instrument_metrics.items()
+        if 0 < m["total_trades"] < MIN_TRADES_FOR_SHARPE
+    ]
+    if low_sample:
+        print(f"\nNOTE — fewer than {MIN_TRADES_FOR_SHARPE} trades, so Sharpe is withheld as unreliable: {', '.join(low_sample)}")
+        print("Judge these on expectancy, profit factor, and drawdown — not on a noisy Sharpe.")
 
     if combined_metrics["max_drawdown"] > 0.15:
         print(f"\nWARNING — combined portfolio max drawdown {combined_metrics['max_drawdown']:.1%} exceeds 15%.")
@@ -360,6 +428,17 @@ if __name__ == "__main__":
     parser.add_argument("--months", type=int, default=DEFAULT_MONTHS_BACK, help="Months of history to pull (default: 6)")
     parser.add_argument("--capital", type=float, default=DEFAULT_INITIAL_CAPITAL, help="Starting capital (default: 100000)")
     parser.add_argument("--slippage", type=float, default=DEFAULT_SLIPPAGE_PCT, help="Slippage per trade as a fraction (default: 0.0005)")
+    parser.add_argument(
+        "--live-halt",
+        action="store_true",
+        help="Permanently halt each backtest on the circuit breaker, as the live bot does "
+             "(default: off — trade through drawdowns so the full window is sampled).",
+    )
     args = parser.parse_args()
 
-    run(initial_capital=args.capital, months_back=args.months, slippage_pct=args.slippage)
+    run(
+        initial_capital=args.capital,
+        months_back=args.months,
+        slippage_pct=args.slippage,
+        halt_on_circuit_breaker=args.live_halt,
+    )

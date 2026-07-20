@@ -21,4 +21,8 @@ venv/
 trades.csv
 daily_pnl.csv
 backtest_results.png
+# one-off research/analysis charts
+btc_cycle_map.png
+spread_pnl_chart.png
+spy_stop_candles.png
 
