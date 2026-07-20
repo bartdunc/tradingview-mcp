@@ -118,6 +118,47 @@ rising markets, which *understates* the regime rule's real value (bear-market
 protection) and *overstates* buy-and-hold's. Forward, expect regime to roughly match
 beta's return while cutting drawdown — its job is the bear market this data can't show.
 
+## Setups, regimes, and where the edge actually lives
+
+Follow-up study (clean daily data, 2011–2026) testing whether *matching setup to
+market* or *adapting across regimes/timeframes* beats a simple fixed trend rule.
+
+**Setup × market (Sharpe):** the setup character sorts by the asset's character —
+trend-following wins trending assets (crypto, tech, equities), regime-filtered
+mean-reversion wins the range-prone ones (gold, bonds). Naive Bollinger band-fade is
+weak everywhere and *loses money* on crypto (fading a violent uptrend: $1 → $0.60).
+
+**Condition split (efficiency ratio):** the cleanest result — mean-reversion earns in
+*ranging* conditions and dies in trends; trend-following earns *all* its return in
+trends and bleeds in ranges (crypto: trend-follow +165%/yr in trending days, −42%/yr in
+ranging). **The edge is the condition, not the indicator.**
+
+**But adapting failed OOS.** A top-down multi-timeframe regime-switch (weekly trend gate
+→ efficiency-ratio regime → trend-follow or mean-revert accordingly) was built and
+tested. **It underperformed the simple fixed trend rule out-of-sample** and was worst on
+QQQ and gold. Reason: regime is obvious in hindsight but lagging/noisy live; switching
+adds whipsaw; more knobs = more overfit. Not added to the bot.
+
+**Diversified multi-market trend-following (the CTA edge, 16 markets, vol-targeted):**
+CAGR 7.7%, maxDD −27%, Sharpe 0.72 — it **lagged buy-and-hold SPY** (14.9%, Sharpe 0.79)
+over 2012–2026. BUT: correlation to SPY only **0.44**, and it *outperformed in 2022's
+bear* (−15.8% vs −18.2%). Note 2012–2020 was a documented "lost decade" for trend
+(vol-suppressed, V-shaped recoveries); its value is **diversification + crisis-alpha,
+not beating stocks on return.**
+
+**Honest conclusion on "do profitable traders exist?":** Yes — but the real edges
+(Medallion, CTAs, macro, market-making) are **modest** (Sharpe ~0.5–0.8), **specialized**,
+and **regime-dependent**, made "very profitable" by *leverage on small edges*,
+*diversification across many uncorrelated bets*, *scale/infrastructure*, or being a tiny
+capacity-capped elite. They are **not** magic single-setups that crush buy-and-hold every
+year. Retail "signal/indicator gurus" selling setups are survivorship + hindsight
+screenshots + course revenue — a different business than trading. **The path to a better
+system is a portfolio of modest, uncorrelated edges sized by risk and run with
+discipline — not a better indicator.** Every "clever" single-setup we tested (cycle
+timing, mean-reversion, Bollinger variants, adaptive regime-switch) lost to a simple
+fixed trend rule OOS; the durable improvements are *diversification* and *risk
+management*, which is exactly what the multi-asset regime-beta book already leans on.
+
 ## Reproducibility
 
 - Long history: Shiller monthly S&P 500 (`github.com/datasets/s-and-p-500`), total
