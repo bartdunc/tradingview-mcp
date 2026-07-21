@@ -53,26 +53,29 @@ INSTRUMENTS = {
         "timeframe": "1Day",
         "params": {"sma_period": 100, "sizing": "fixed_fractional", "allocation": 0.2, "stop_atr_mult": 8.0},
     },
+    # Non-trend sleeve: static bond-carry anchor (term premium), HELD not traded.
+    # Genuinely uncorrelated to the trend book (-0.06). Deliberately small — this is
+    # deflationary-crash insurance (2008: +6% vs -4%), and it costs you in inflationary
+    # regimes (2022: -12.6% vs -10.4%). Never stopped out (wide stop = held forever).
+    "IEF": {
+        "asset_class": "us_equity",
+        "strategy": "buy_hold",
+        "timeframe": "1Day",
+        "params": {"sizing": "fixed_fractional", "allocation": 0.15, "stop_atr_mult": 999.0},
+    },
 }
 
-# --- OPTIONAL non-trend sleeve (OFF by default) -----------------------------
-# A genuine NON-trend return source to stack onto the trend book above: a static
-# buy-and-hold IEF bond-carry sleeve (term premium, corr -0.06 to the trend book).
-# Full study in docs/NON_TREND_SLEEVE.md. Honest verdict: it lifts full-window
-# Sharpe (0.77 -> 0.93) BUT split-half testing shows that was the 2007-2016 bond
-# bull — it HURT in 2017-2026 (2022 crushed bonds; trend alone won the forward
-# decade). It cushions deflationary busts (2008: +6% vs -4%) and costs you in
-# inflationary ones (2022). So it ships OFF and, if enabled, SMALL — insurance,
-# not alpha. To activate, merge an entry like this into INSTRUMENTS:
-#
-#   "IEF": {
-#       "asset_class": "us_equity",
-#       "strategy": "buy_hold",
-#       "timeframe": "1Day",
-#       # small static anchor; never stopped out (wide stop = held forever)
-#       "params": {"sizing": "fixed_fractional", "allocation": 0.15, "stop_atr_mult": 999.0},
-#   },
-NON_TREND_SLEEVE_ENABLED = False
+# --- Non-trend sleeve (ENABLED — IEF bond-carry anchor above) ---------------
+# Full study: docs/NON_TREND_SLEEVE.md. Enabled as a deliberate INSURANCE choice,
+# not because it is a risk-adjusted free lunch. What you are buying and paying:
+#   + genuinely uncorrelated to the trend book (-0.06); best deflationary-bust
+#     protection on the board (2008: +6.2% vs the trend book's -3.7%)
+#   - split-half shows the Sharpe lift was the 2007-2016 bond bull; it HURT in
+#     2017-2026 (2022 crushed stocks AND bonds together: -12.6% vs -10.4%)
+#   - raises gross exposure 1.4x -> 1.55x, and the trend book alone remains the
+#     most drawdown-efficient configuration (Calmar 0.68)
+# Set False (and drop the IEF entry) to revert to the pure trend book.
+NON_TREND_SLEEVE_ENABLED = True
 
 # If every symbol in `leaders` is already long, block new long entries on `blocked`.
 # Prevents doubling up on correlated risk-on exposure (e.g. SPY + QQQ + BTC all long at once).
