@@ -42,22 +42,40 @@ the same elapsed point.
 
 The halving is real and mechanical. It is also **arithmetically weakening every cycle**:
 
-| halving | block reward | daily BTC issued | annual inflation | multiple from halving |
-|---|---|---|---|---|
-| 2012 | 25 | 3,600 | ~25% | **93×** |
-| 2016 | 12.5 | 1,800 | ~4% | **30×** |
-| 2020 | 6.25 | 900 | ~1.8% | **8×** |
-| 2024 | 3.125 | 450 | **0.85%** | **~2×** |
-| 2028 | 1.5625 | 225 | **0.4%** | ? |
+> **Correction (2026-07-21).** An earlier version of this section contained three
+> errors: it quoted ~25% as the *post*-2012-halving inflation rate (that is the *pre*
+> rate; post is ~12.5%), described the 2024 impulse as ~30× smaller than 2012 (it is
+> **15×**; 31× is the *2028* figure), and mixed halving→cycle-peak multiples with
+> halving→+2yr multiples in one series. All figures below are recomputed from first
+> principles and from this repo's own price data, with each metric labelled.
 
-**The 2012 halving removed ~25 percentage points of annual supply growth. The 2024
-halving removed 0.85.** That is a roughly 30× smaller impulse — and the price response
-decayed almost exactly in step (93× → 30× → 8× → 2×).
+**Supply impulse, from first principles** (`scratchpad/btc_supply_check.py`):
 
-This is the key fundamental point: the decay is **not** vague "market maturation." The
-causal impulse is shrinking by construction, and the effect is shrinking with it. By the
-2028 halving ~97.7% of all BTC will be mined, and new issuance will be **<0.05% of daily
-exchange volume**.
+| halving | new reward | supply then | inflation before → after | **points removed** | vs 2012 |
+|---|---|---|---|---|---|
+| 2012 | 25 | 10.50M | 25.03% → 12.51% | **12.51pt** | 1.0× |
+| 2016 | 12.5 | 15.75M | 8.34% → 4.17% | 4.17pt | 3.0× smaller |
+| 2020 | 6.25 | 18.38M | 3.58% → 1.79% | 1.79pt | 7.0× smaller |
+| 2024 | 3.125 | 19.69M | 1.67% → 0.83% | **0.83pt** | **15.0× smaller** |
+| 2028 | 1.5625 | 20.34M | 0.81% → 0.40% | 0.40pt | 31.0× smaller |
+
+**Price response, measured here — two DIFFERENT metrics, never to be mixed:**
+
+| halving | → +2 years | → cycle peak |
+|---|---|---|
+| 2016 | 10.4× | 30.0× |
+| 2020 | 3.4× | 7.9× |
+| 2024 | **1.2×** | **2.0×** |
+
+(The widely-quoted 93× for 2012 is a halving→peak figure that predates this price data
+and is not verified here.)
+
+**The impulse is shrinking — but the response is shrinking faster.** From 2016 to 2024
+the supply impulse fell 5× (4.17pt → 0.83pt) while the peak multiple fell 15× (30.0× →
+2.0×). **So the halving does not explain the decay on its own.** The likelier additional
+drivers are the market-cap denominator (moving a ~$2.4tn asset requires vastly more
+capital than a ~$200bn one) and the demand side becoming dominant — see §4. By 2028
+~97.7% of all BTC will be mined and new issuance will be <0.05% of daily exchange volume.
 
 ## 3. Scarcity vs cyclicality — a distinction worth keeping
 
@@ -86,9 +104,9 @@ cycle**, not the block schedule.
 
 ## 5. The two anchors disagree
 
-| anchor | 2-year multiple trend |
+| anchor | multiple trend |
 |---|---|
-| From **halving** | 93× → 30× → 8× → **2×** — collapsing |
+| From **halving** (→peak, measured) | 30.0× → 7.9× → **2.0×** — collapsing |
 | From **cycle bottom** | 4.6× → 6.0× → **6.2×** — stable |
 
 Bottom-anchored returns have held up remarkably well (Jan-2015 → 4.6×, Dec-2018 → 6.0×,
@@ -160,3 +178,4 @@ daily data in `scratchpad/`.
 - `scratchpad/btc_cycle_claim.py` — 2-year multiples from bottoms/halvings, timing
   sensitivity, unconditional baseline, drawdown distribution.
 - `scratchpad/btc_where_now.py` — cycle alignment by days-since-peak, analogue projection.
+- `scratchpad/btc_supply_check.py` — supply mechanics from first principles; both price metrics labelled.
