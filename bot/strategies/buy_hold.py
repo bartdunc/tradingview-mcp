@@ -26,3 +26,8 @@ def generate_signal(df, position, params):
         return "long"
     # Held forever: the anchor never times an exit.
     return None
+
+
+def warmup_bars(params):
+    """A static anchor needs no history of its own."""
+    return 1

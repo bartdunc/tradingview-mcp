@@ -34,3 +34,7 @@ def generate_signal(df, position, params):
     if position["direction"] == "short" and crossed_up:
         return "exit"
     return None
+
+
+def warmup_bars(params):
+    return params.get("slow_ema", 200) + 2
