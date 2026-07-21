@@ -102,3 +102,40 @@ other finding in this project.
 - `scratchpad/monthly.py` — monthly profile, geometric vs arithmetic, goal thresholds.
 - Data: dividend-adjusted daily closes (`scratchpad/fetch_data.py`), cash = BIL,
   signals lagged one bar (no lookahead).
+
+## Leverage and stop width — tested, both rejected
+
+Grid over leverage × ATR stop width on the 200-day regime book (2015–2026, leverage
+financed at 5%/yr on the borrowed portion).
+
+**Stop width at 1x** — wide stops are free, tight stops are strictly worse:
+
+| stop | CAGR | Sharpe | maxDD |
+|---|---|---|---|
+| none | 13.1% | **1.18** | **−19.3%** |
+| 8 ATR (live bot) | 13.1% | **1.18** | **−19.3%** |
+| 4 ATR | 13.1% | 1.18 | −19.3% |
+| 2 ATR | 12.6% | 1.13 | −21.2% |
+| **1 ATR (tight)** | **7.8%** | **0.86** | **−21.0%** |
+
+8-ATR and 4-ATR are *identical* to no stop — they never fire, so the live bot's wide
+backstop costs nothing and the regime exit does all the work. The tight stop destroys
+40% of the return **and makes drawdown worse** (−21.0% vs −19.3%): it ejects you at a
+local low on noise, you sit flat through the recovery, and you remain exposed to the
+next decline. You pay for the stop twice and get no protection. This is the same
+mechanism this project traced to a −100% wipeout on the old book.
+
+**Leverage** — a clean risk dial, not an edge. Sharpe *declines* monotonically with
+financing drag:
+
+| leverage | CAGR | Sharpe | maxDD |
+|---|---|---|---|
+| 1x | 13.1% | **1.18** | −19.3% |
+| 1.5x | 18.6% | 1.12 | −28.3% |
+| 2x | 23.6% | 1.08 | −36.5% |
+| 3x | 33.0% | 1.03 | −52.3% |
+
+At 2x the book's drawdown exceeds the bot's own 10% circuit breaker several times over.
+
+**The best risk-adjusted cell in the entire grid is 1x with a wide-or-no stop
+(Sharpe 1.18) — which is the live bot's current configuration.**
