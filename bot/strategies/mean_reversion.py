@@ -55,3 +55,7 @@ def generate_signal(df, position, params):
     if z_score >= threshold and short_ok:
         return "short"
     return None
+
+
+def warmup_bars(params):
+    return max(params.get("lookback", 20), params.get("trend_ma_period") or 0) + 1

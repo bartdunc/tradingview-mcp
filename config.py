@@ -18,6 +18,18 @@ MAX_PORTFOLIO_DRAWDOWN = 0.10  # circuit breaker: flatten everything and halt
 TRADES_LOG_PATH = "trades.csv"
 DAILY_PNL_LOG_PATH = "daily_pnl.csv"
 LOOP_INTERVAL_SECONDS = 60
+STATE_PATH = "bot_state.json"  # peak equity etc., so restarts don't lose drawdown history
+
+# DRY_RUN=True logs the order it WOULD submit and sends nothing. Default True:
+# until this session there was no dry-run guard at all in the Python bot — the
+# only thing between the code and real orders was ALPACA_BASE_URL. Set the env
+# var DRY_RUN=false to actually submit.
+DRY_RUN = os.getenv("DRY_RUN", "true").strip().lower() not in ("false", "0", "no")
+
+# Order fill confirmation: how long to wait for a submitted order to fill before
+# treating it as failed and rolling the in-memory position back.
+ORDER_FILL_TIMEOUT_SECONDS = 60
+ORDER_POLL_SECONDS = 2
 
 INSTRUMENTS = {
     # Regime-filtered beta (validated OOS + battle-tested across assets and 123yr):
@@ -93,4 +105,7 @@ TIMEFRAME_SECONDS = {
     "15Min": 15 * 60,
     "1Hour": 60 * 60,
     "4Hour": 4 * 60 * 60,
+    # The live book trades daily bars. Its absence here raised KeyError('1Day')
+    # inside the loop's blanket except, so the bot span forever and never traded.
+    "1Day": 24 * 60 * 60,
 }

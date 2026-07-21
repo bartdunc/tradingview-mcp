@@ -36,3 +36,7 @@ def generate_signal(df, position, params):
     if position["direction"] == "short" and breakout_up:
         return "exit"
     return None
+
+
+def warmup_bars(params):
+    return params.get("lookback", 20) + 1

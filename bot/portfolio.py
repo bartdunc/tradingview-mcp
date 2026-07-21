@@ -2,10 +2,12 @@
 
 
 class Portfolio:
-    def __init__(self, correlation_filter=None):
+    def __init__(self, correlation_filter=None, peak_equity=None):
         self.positions = {}
         self.correlation_filter = correlation_filter or []
-        self.peak_equity = None
+        # Seeded from the persisted state file on restart so a drawdown in
+        # progress is not forgotten (which would disarm the circuit breaker).
+        self.peak_equity = peak_equity
 
     def is_open(self, symbol):
         return symbol in self.positions

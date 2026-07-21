@@ -33,3 +33,8 @@ def generate_signal(df, position, params):
     if price < sma:
         return "exit"
     return None
+
+
+def warmup_bars(params):
+    """Bars generate_signal needs before it can ever return a signal."""
+    return params.get("sma_period", 100) + 1
