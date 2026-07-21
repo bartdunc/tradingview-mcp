@@ -119,6 +119,46 @@ premium, not free diversification.
   flagged as non-repeatable**, and the live bot **already runs it** (BTC `regime_beta`,
   allocation 0.2). So this is not a new edge — it is the diversifier the bot already has.
 
+## Postscript — 0DTE options reach the same verdict independently
+
+The credit-spread prototype above (92% win rate, PF 1.16, two ordinary dips erasing 87%
+of gains) has independent confirmation in the academic work on **0DTE options** — the same
+short-volatility trade on a one-day clock.
+
+Gayda, *Retail Traders Love 0DTE Options... But Should They?* — S&P 500 index options,
+Feb 2021 – Sep 2023:
+
+| | |
+|---|---|
+| Cumulative retail losses | **−$125 million** |
+| Of which **transaction costs** | **>$90 million** |
+| Average loss per day | **$241,000** (→ **$350,000/day** once daily expiries began, May 2022) |
+| Share of retail SPX volume that is 0DTE | **~75%** |
+
+Gross profits *before* fees were about −$30M, so retail lost on positioning and costs
+tripled it. The average single put loses **$16.30**; the average call **$20.70**.
+
+**The split is the useful part, and it matches this project's own finding exactly:**
+
+| side | average daily P&L |
+|---|---|
+| **Buying** (debit) | **−$364,000** |
+| **Selling** (credit) | **+$122,000** — profitable *after* fees |
+
+The authors attribute the profitable side explicitly to harvesting the **variance risk
+premium**. And the per-strategy breakdown reproduces our credit-spread signature: iron
+condors and butterflies show *median* profits positive but *average* profits negative,
+"driven by a few negative outliers" — many small wins, rare large losses.
+
+**Two conclusions:**
+
+1. **Short-volatility premium is real but thin** — now confirmed from two independent
+   directions: our own 25-trade prototype, and $125M of aggregate retail flow.
+2. **A longer horizon makes 0DTE worse, not better.** Over 70% of the losses are
+   transaction costs, and 0DTE is the highest-frequency strategy that exists — one expiry
+   per day. More time means more round trips through the spread. Time multiplies the drag
+   rather than diluting it.
+
 ## Verdict & decision
 
 The non-trend sleeve is **built, validated, and shipped OFF by default** (`config.py`,
