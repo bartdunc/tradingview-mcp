@@ -207,6 +207,11 @@ concentrated, because every attempt to "diversify" it with more trend made it wo
 > full-window Sharpe 0.77 → 0.93 — but split-half testing shows that was the
 > 2007–2016 bond bull; it **hurt** in 2017–2026 (2022 crushed bonds). Built and
 > shipped **OFF by default** as optional deflationary-crash insurance, not alpha.
+> **The search is now closed:** carry (bonds *and* FX), volatility premium, credit, and a
+> plain beta anchor were all tested — FX carry is negative-Sharpe with a −28% 2008 and its
+> ETF was liquidated; the credit premium is equity beta in disguise (corr 0.67, *rising* to
+> 0.69 in crisis) paying 0.9%/yr for a −47% drawdown. The only genuinely uncorrelated sleeve
+> that survives forward is **crypto-trend, which the live bot already runs.**
 
 ## Reproducibility
 
