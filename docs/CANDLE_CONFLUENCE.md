@@ -163,9 +163,81 @@ forfeits more beta than it captures, and as an overlay it is dominated by plain 
 Several are reliably negative. Use them for structure and stop placement, exactly as the
 skill says — never as a signal.
 
+## 5. The 200-day MA bounce — full 208-combo sweep
+
+"Run the combos" is the right instinct *and* the classic way to manufacture an edge:
+search enough rules and the best one always looks good. So the grid was run in full —
+7 proximity definitions × 8 triggers × 4 holding periods = **208 combinations** — with
+selection made in-sample (2001–2013) and judged out-of-sample (2014–2026).
+
+### First, the encouraging part
+
+| | |
+|---|---|
+| corr(IS Sharpe, OOS Sharpe) | **+0.589** |
+| mean OOS Sharpe, best 10% in-sample | **+0.641** |
+| mean OOS Sharpe, worst 10% in-sample | −0.022 |
+
+In-sample rank genuinely predicts out-of-sample. This is **not** pure noise-mining —
+there is real persistent structure. The obvious conclusion is "so there IS an edge."
+
+### Then, what the structure actually is
+
+| | |
+|---|---|
+| corr(**exposure**, OOS Sharpe) | **+0.793** |
+| corr(IS Sharpe, OOS Sharpe) | +0.589 |
+| **partial** corr(IS, OOS \| exposure) | **+0.232** |
+
+Exposure predicts out-of-sample performance *better than the in-sample Sharpe does*.
+Control for it and the apparent edge-persistence collapses from 0.589 to 0.232. **The
+"structure" is mostly just time spent in the market** — combos that are invested more
+do better, because the assets go up.
+
+### The bounce hypothesis, answered directly
+
+Mean OOS Sharpe by proximity requirement — i.e. how close price must be to the 200-day
+MA to qualify:
+
+| proximity rule | n | mean OOS Sharpe | mean exposure |
+|---|---|---|---|
+| any distance (just above a rising 200) | 32 | **+0.608** | 27.9% |
+| within 5% | 32 | +0.200 | 11.8% |
+| within 3% | 32 | +0.182 | 7.4% |
+| within 2% | 32 | +0.150 | 5.5% |
+| within 1% | 32 | +0.056 | 3.5% |
+| **reclaim 200 (cross back above)** | 16 | **−0.099** | 1.9% |
+| **touch 200 (wick through, close above)** | 32 | **−0.109** | 1.8% |
+
+**A perfectly monotonic ladder, pointing the wrong way.** The tighter the "bounce off the
+200" requirement, the worse it performs — and the two rules that literally encode a
+bounce (a wick through the 200 closing back above it; a cross back above it) are the
+**only two negative buckets in the entire 208-combo grid.**
+
+There is no 200-MA bounce edge here. The 200-day MA is valuable as a *regime filter* —
+"am I above it or below it" — and adds nothing as a *touch-and-bounce trigger*.
+
+### What the search actually found
+
+Best combination out of all 208, out-of-sample:
+
+| | OOS Sharpe | OOS CAGR | exposure |
+|---|---|---|---|
+| **`any_dist + none + 5d`** | **1.14** | 13.2% | 69% |
+| buy & hold (equal-weight) | 0.99 | **16.1%** | 100% |
+
+The winner uses **no proximity rule, no candlestick, and no count** — it is simply *"be
+long while the 200-day MA is rising."* Higher Sharpe than buy-and-hold, lower return,
+partial exposure.
+
+That is a regime filter. **The 208-combo search, run honestly, rediscovered
+`regime_beta` — the strategy the bot already trades — and rejected every embellishment
+placed on top of it.**
+
 ## Reproducibility
 
 - `scratchpad/fetch_ohlc.py` — adjusted daily OHLC (candle geometry preserved).
 - `scratchpad/candle_study.py` — event study: formations, counts, confluence, controls.
 - `scratchpad/candle_strategy.py` — OOS split, vs buy-and-hold, cost sensitivity.
 - `scratchpad/candle_overlay.py` — sizing overlay and the matched-exposure control.
+- `scratchpad/ma200_sweep.py` — 208-combo 200-MA bounce sweep, IS/OOS selection, exposure decomposition.
