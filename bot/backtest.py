@@ -203,7 +203,7 @@ def compute_metrics(trades, equity_curve, initial_capital, periods_per_year=252)
     PnL, no annualization) are robust at low trade counts and are the intended
     primary scorecard alongside total_return, profit_factor, and max_drawdown.
     """
-    if not trades or not equity_curve:
+    if not equity_curve:
         return {
             "total_trades": 0,
             "win_rate": 0.0,
@@ -215,6 +215,32 @@ def compute_metrics(trades, equity_curve, initial_capital, periods_per_year=252)
             "max_drawdown": 0.0,
             "sharpe_ratio": None,
             "total_return": 0.0,
+        }
+
+    if not trades:
+        # No CLOSED trades, but the equity curve is still real — a buy-and-hold
+        # anchor sleeve (bot/strategies/buy_hold.py) holds one open position and
+        # never exits, so every trade-based stat is undefined while mark-to-market
+        # return and drawdown are perfectly well defined. Zeroing these (the old
+        # behavior) silently reported a held sleeve as "0.0% return, 0.0% DD".
+        equity_series = pd.Series(
+            [e for _, e in equity_curve], index=pd.DatetimeIndex([t for t, _ in equity_curve])
+        )
+        daily_equity = equity_series.resample("1D").last().ffill().dropna()
+        running_max = daily_equity.cummax()
+        max_drawdown = float(((running_max - daily_equity) / running_max).max()) if len(daily_equity) else 0.0
+        final_equity = equity_curve[-1][1]
+        return {
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_win": 0.0,
+            "avg_loss": 0.0,
+            "profit_factor": 0.0,
+            "expectancy": 0.0,
+            "trade_sharpe": None,
+            "max_drawdown": max_drawdown,
+            "sharpe_ratio": None,
+            "total_return": (final_equity - initial_capital) / initial_capital,
         }
 
     pnls = [t["pnl"] for t in trades]

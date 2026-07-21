@@ -138,10 +138,58 @@ cost, enable a **small (~15%) static IEF bond-carry anchor** — the config bloc
 `buy_hold` primitive are in place to do exactly that. It is a preference on which crash you
 want to be protected against, not a risk-adjusted free lunch. Sized as insurance, not alpha.
 
+## Enabled on the live book, measured, and reverted (the decision-relevant number)
+
+The study above sizes sleeves by **risk parity** on a normalized 1× trend book. The
+**live** book is different: it already runs GLD and BTC as uncorrelated diversifiers at
+1.4× gross. Enabling the anchor there is a *small 15% add-on*, not a risk-parity
+reweight — so the effect is much smaller. Measured on dividend-adjusted total-return
+data (`scratchpad/compare_anchor.py`):
+
+| Window | Book | CAGR | Sharpe | Sortino | MaxDD | Calmar |
+|---|---|---|---|---|---|---|
+| 48-month | trend book | 29.5% | 1.40 | 1.85 | −11.3% | **2.60** |
+| | **+ IEF anchor 0.15** | 29.7% | 1.40 | 1.87 | −11.9% | 2.50 |
+| 2015 → | trend book | 28.0% | 1.44 | 1.83 | −21.9% | **1.28** |
+| | **+ IEF anchor 0.15** | 28.3% | 1.45 | 1.86 | −23.4% | 1.21 |
+| 2007 → | trend book | 19.8% | 1.17 | 1.46 | −21.9% | **0.91** |
+| | **+ IEF anchor 0.15** | 20.4% | **1.21** | **1.52** | −23.4% | 0.87 |
+
+**The anchor is close to a no-op on the live book:** Sharpe +0.00 to +0.04, CAGR +0.2 to
++0.6 pts — and **drawdown and Calmar get consistently *worse*** (gross rises 1.4× → 1.55×,
+and 2022 hit bonds alongside stocks). It still does the one job it was enabled for:
+
+| | 2008 | 2020 | **2022** |
+|---|---|---|---|
+| trend book | −4.6% | +64.0% | −17.3% |
+| + IEF anchor | **−2.2%** | +66.4% | **−19.3%** |
+
+Deflationary-bust insurance worth **+2.4 pts in 2008**, paid for with **−2.0 pts in 2022**.
+That is the trade, and on a book that already holds GLD + BTC it is roughly a wash.
+
+**Decision: reverted, sleeve left OFF.** This book's entire edge is drawdown efficiency,
+and the anchor degrades exactly that (worse MaxDD and Calmar in every window tested) in
+exchange for a Sharpe gain that rounds to zero. The `buy_hold` primitive, the config
+block, and this measurement all remain in place, so re-enabling is a one-block edit if
+you later decide you want the deflationary insurance.
+
+### Two harness limitations this sleeve exposed
+
+1. **`compute_metrics` zeroed every metric when there were no *closed* trades** — so a
+   held anchor reported "0.0% return, 0.0% max DD" while its mark-to-market curve was
+   real. **Fixed:** with an equity curve but no closed trades, return and drawdown are now
+   computed from the curve and only the trade-based stats are suppressed.
+2. **Alpaca bars are unadjusted price.** For a bond ETF the coupon *is* the return, so the
+   harness measures IEF at **−1.5%** over the 48-month window where its true total return
+   is **+3.8%** — understating the carry sleeve by ~5.3 points over four years. This is a
+   data limitation, not a bug: **evaluate any carry/anchor sleeve on dividend-adjusted
+   data** (`scratchpad/compare_anchor.py`), never on the Alpaca price feed.
+
 ## Reproducibility
 
 - `scratchpad/fetch_data.py` — stdlib Yahoo fetch → `scratchpad/data/*.csv` (adjusted).
 - `scratchpad/study.py` — portfolios, metrics, vol-matched view, stress years.
 - `scratchpad/study2.py` — carry variant, split-half robustness, BTC sleeve.
 - `scratchpad/plot_study.py` → `non_trend_sleeve.png` (growth of $1 + rolling Sharpe).
+- `scratchpad/compare_anchor.py` — live book with/without the anchor, total-return data.
 - All signals lagged one bar (no lookahead); returns dividend-adjusted; cash = BIL.

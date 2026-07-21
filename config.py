@@ -55,15 +55,20 @@ INSTRUMENTS = {
     },
 }
 
-# --- OPTIONAL non-trend sleeve (OFF by default) -----------------------------
-# A genuine NON-trend return source to stack onto the trend book above: a static
-# buy-and-hold IEF bond-carry sleeve (term premium, corr -0.06 to the trend book).
-# Full study in docs/NON_TREND_SLEEVE.md. Honest verdict: it lifts full-window
-# Sharpe (0.77 -> 0.93) BUT split-half testing shows that was the 2007-2016 bond
-# bull — it HURT in 2017-2026 (2022 crushed bonds; trend alone won the forward
-# decade). It cushions deflationary busts (2008: +6% vs -4%) and costs you in
-# inflationary ones (2022). So it ships OFF and, if enabled, SMALL — insurance,
-# not alpha. To activate, merge an entry like this into INSTRUMENTS:
+# --- OPTIONAL non-trend sleeve (OFF — enabled, measured, and reverted) ------
+# A static buy-and-hold IEF bond-carry sleeve (term premium, corr -0.06 to the
+# trend book). Full study + the live-book measurement: docs/NON_TREND_SLEEVE.md.
+#
+# It WAS enabled at allocation 0.15 and backtested on dividend-adjusted data. On
+# the live book the result was effectively a NO-OP: Sharpe +0.00 (48mo) to +0.04
+# (since 2007), CAGR +0.2..+0.6pts, while max drawdown AND Calmar got consistently
+# WORSE (48mo DD -11.3% -> -11.9%, Calmar 2.60 -> 2.50; gross 1.4x -> 1.55x). It is
+# far weaker here than in the risk-parity study because this book ALREADY carries
+# GLD and BTC as uncorrelated diversifiers. It does buy real deflationary-bust
+# insurance (2008 -4.6% -> -2.2%) at a real inflationary cost (2022 -17.3% -> -19.3%).
+#
+# Reverted: this book's edge IS drawdown efficiency, and the anchor degrades it for
+# a Sharpe gain that rounds to zero. To re-enable, add to INSTRUMENTS:
 #
 #   "IEF": {
 #       "asset_class": "us_equity",
@@ -72,6 +77,10 @@ INSTRUMENTS = {
 #       # small static anchor; never stopped out (wide stop = held forever)
 #       "params": {"sizing": "fixed_fractional", "allocation": 0.15, "stop_atr_mult": 999.0},
 #   },
+#
+# NOTE: evaluate any carry/anchor sleeve on DIVIDEND-ADJUSTED data. Alpaca bars are
+# unadjusted, and for a bond ETF the coupon IS the return (harness showed IEF at
+# -1.5% over 48mo where its true total return was +3.8%).
 NON_TREND_SLEEVE_ENABLED = False
 
 # If every symbol in `leaders` is already long, block new long entries on `blocked`.
