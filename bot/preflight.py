@@ -101,10 +101,42 @@ def broker_checks():
         from . import data_utils
         api = data_utils.get_api()
         acct = api.get_account()
+        equity = float(acct.equity)
         rows.append((OK, "account", f"status={acct.status} equity={acct.equity} buying_power={acct.buying_power}"))
     except Exception as exc:
         rows.append((FAIL, "account", f"{exc}"))
         return rows
+
+    # SOLE-OCCUPANT CHECK. Sizing is `equity * allocation` off TOTAL account equity,
+    # and peak-equity/circuit-breaker read total equity too. Positions this bot does
+    # not manage therefore (a) inflate what it deploys and (b) feed P&L it does not
+    # control into the risk control that is supposed to stop it. The bot implicitly
+    # assumes it is the only thing trading this account.
+    try:
+        positions = api.list_positions()
+        unmanaged = [p for p in positions if data_utils.FROM_BROKER_SYMBOL.get(p.symbol) is None]
+        managed = [p for p in positions if data_utils.FROM_BROKER_SYMBOL.get(p.symbol) is not None]
+        rows.append((OK, "managed positions", f"{len(managed)} in config"))
+        if unmanaged:
+            mv = sum(abs(float(p.market_value)) for p in unmanaged)
+            names = ", ".join(p.symbol for p in unmanaged[:6]) + ("..." if len(unmanaged) > 6 else "")
+            rows.append((WARN, "UNMANAGED positions",
+                         f"{len(unmanaged)} ({names}) worth {mv:,.0f} = {mv/equity*100:.0f}% of equity — "
+                         "sizing and the circuit breaker assume this bot is the account's sole occupant"))
+        else:
+            rows.append((OK, "unmanaged positions", "none — bot is sole occupant"))
+
+        # What the book would deploy on top of whatever is already held.
+        intended = sum(c["params"].get("allocation", 0.0) for c in config.INSTRUMENTS.values()
+                       if c["params"].get("sizing") == "fixed_fractional") * equity
+        held = sum(abs(float(p.market_value)) for p in positions)
+        total = intended + sum(abs(float(p.market_value)) for p in unmanaged)
+        status = OK if total <= equity else WARN
+        rows.append((status, "projected exposure",
+                     f"intended {intended:,.0f} + unmanaged {total-intended:,.0f} = {total:,.0f} "
+                     f"vs equity {equity:,.0f} ({total/equity:.2f}x)"))
+    except Exception as exc:
+        rows.append((WARN, "position check", f"{exc}"))
 
     for symbol, cfg in config.INSTRUMENTS.items():
         if cfg["timeframe"] not in config.TIMEFRAME_SECONDS:
