@@ -138,7 +138,7 @@ cost, enable a **small (~15%) static IEF bond-carry anchor** — the config bloc
 `buy_hold` primitive are in place to do exactly that. It is a preference on which crash you
 want to be protected against, not a risk-adjusted free lunch. Sized as insurance, not alpha.
 
-## Enabled on the live book — what it actually does (the decision-relevant number)
+## Enabled on the live book, measured, and reverted (the decision-relevant number)
 
 The study above sizes sleeves by **risk parity** on a normalized 1× trend book. The
 **live** book is different: it already runs GLD and BTC as uncorrelated diversifiers at
@@ -166,6 +166,12 @@ and 2022 hit bonds alongside stocks). It still does the one job it was enabled f
 
 Deflationary-bust insurance worth **+2.4 pts in 2008**, paid for with **−2.0 pts in 2022**.
 That is the trade, and on a book that already holds GLD + BTC it is roughly a wash.
+
+**Decision: reverted, sleeve left OFF.** This book's entire edge is drawdown efficiency,
+and the anchor degrades exactly that (worse MaxDD and Calmar in every window tested) in
+exchange for a Sharpe gain that rounds to zero. The `buy_hold` primitive, the config
+block, and this measurement all remain in place, so re-enabling is a one-block edit if
+you later decide you want the deflationary insurance.
 
 ### Two harness limitations this sleeve exposed
 

@@ -53,29 +53,35 @@ INSTRUMENTS = {
         "timeframe": "1Day",
         "params": {"sma_period": 100, "sizing": "fixed_fractional", "allocation": 0.2, "stop_atr_mult": 8.0},
     },
-    # Non-trend sleeve: static bond-carry anchor (term premium), HELD not traded.
-    # Genuinely uncorrelated to the trend book (-0.06). Deliberately small — this is
-    # deflationary-crash insurance (2008: +6% vs -4%), and it costs you in inflationary
-    # regimes (2022: -12.6% vs -10.4%). Never stopped out (wide stop = held forever).
-    "IEF": {
-        "asset_class": "us_equity",
-        "strategy": "buy_hold",
-        "timeframe": "1Day",
-        "params": {"sizing": "fixed_fractional", "allocation": 0.15, "stop_atr_mult": 999.0},
-    },
 }
 
-# --- Non-trend sleeve (ENABLED — IEF bond-carry anchor above) ---------------
-# Full study: docs/NON_TREND_SLEEVE.md. Enabled as a deliberate INSURANCE choice,
-# not because it is a risk-adjusted free lunch. What you are buying and paying:
-#   + genuinely uncorrelated to the trend book (-0.06); best deflationary-bust
-#     protection on the board (2008: +6.2% vs the trend book's -3.7%)
-#   - split-half shows the Sharpe lift was the 2007-2016 bond bull; it HURT in
-#     2017-2026 (2022 crushed stocks AND bonds together: -12.6% vs -10.4%)
-#   - raises gross exposure 1.4x -> 1.55x, and the trend book alone remains the
-#     most drawdown-efficient configuration (Calmar 0.68)
-# Set False (and drop the IEF entry) to revert to the pure trend book.
-NON_TREND_SLEEVE_ENABLED = True
+# --- OPTIONAL non-trend sleeve (OFF — enabled, measured, and reverted) ------
+# A static buy-and-hold IEF bond-carry sleeve (term premium, corr -0.06 to the
+# trend book). Full study + the live-book measurement: docs/NON_TREND_SLEEVE.md.
+#
+# It WAS enabled at allocation 0.15 and backtested on dividend-adjusted data. On
+# the live book the result was effectively a NO-OP: Sharpe +0.00 (48mo) to +0.04
+# (since 2007), CAGR +0.2..+0.6pts, while max drawdown AND Calmar got consistently
+# WORSE (48mo DD -11.3% -> -11.9%, Calmar 2.60 -> 2.50; gross 1.4x -> 1.55x). It is
+# far weaker here than in the risk-parity study because this book ALREADY carries
+# GLD and BTC as uncorrelated diversifiers. It does buy real deflationary-bust
+# insurance (2008 -4.6% -> -2.2%) at a real inflationary cost (2022 -17.3% -> -19.3%).
+#
+# Reverted: this book's edge IS drawdown efficiency, and the anchor degrades it for
+# a Sharpe gain that rounds to zero. To re-enable, add to INSTRUMENTS:
+#
+#   "IEF": {
+#       "asset_class": "us_equity",
+#       "strategy": "buy_hold",
+#       "timeframe": "1Day",
+#       # small static anchor; never stopped out (wide stop = held forever)
+#       "params": {"sizing": "fixed_fractional", "allocation": 0.15, "stop_atr_mult": 999.0},
+#   },
+#
+# NOTE: evaluate any carry/anchor sleeve on DIVIDEND-ADJUSTED data. Alpaca bars are
+# unadjusted, and for a bond ETF the coupon IS the return (harness showed IEF at
+# -1.5% over 48mo where its true total return was +3.8%).
+NON_TREND_SLEEVE_ENABLED = False
 
 # If every symbol in `leaders` is already long, block new long entries on `blocked`.
 # Prevents doubling up on correlated risk-on exposure (e.g. SPY + QQQ + BTC all long at once).
