@@ -14,6 +14,7 @@ _STRATEGY_MODULES = {
     "momentum_breakout": "bot.strategies.momentum_breakout",
     "trend_following": "bot.strategies.trend_following",
     "regime_beta": "bot.strategies.regime_beta",
+    "buy_hold": "bot.strategies.buy_hold",
 }
 
 

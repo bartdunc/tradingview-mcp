@@ -201,6 +201,13 @@ diversifier would have to be a *non-trend* return source (carry, volatility prem
 plain buy-and-hold beta anchor) — a separate build. The bot is deliberately kept
 concentrated, because every attempt to "diversify" it with more trend made it worse.
 
+> **Follow-up — the non-trend sleeve got built and tested.** See
+> [NON_TREND_SLEEVE.md](NON_TREND_SLEEVE.md). Short version: a *held* (not
+> trend-traded) bond-carry sleeve is genuinely uncorrelated (−0.06) and lifts
+> full-window Sharpe 0.77 → 0.93 — but split-half testing shows that was the
+> 2007–2016 bond bull; it **hurt** in 2017–2026 (2022 crushed bonds). Built and
+> shipped **OFF by default** as optional deflationary-crash insurance, not alpha.
+
 ## Reproducibility
 
 - Long history: Shiller monthly S&P 500 (`github.com/datasets/s-and-p-500`), total
