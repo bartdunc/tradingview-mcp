@@ -185,6 +185,52 @@ you later decide you want the deflationary insurance.
    data limitation, not a bug: **evaluate any carry/anchor sleeve on dividend-adjusted
    data** (`scratchpad/compare_anchor.py`), never on the Alpaca price feed.
 
+## FX and credit — the other two candidate sources, tested and rejected
+
+If bond carry is the weakest acceptable diversifier, the obvious next questions are
+**FX carry** and **credit**. Both were tested against the same bar every sleeve here has
+to clear: low correlation to equity *and* to the trend book, a real standalone premium,
+and — the one that actually matters — **the diversification has to hold in the crisis it
+is supposed to cushion.**
+
+| Sleeve | CAGR | Sharpe | MaxDD | corr equity | corr trend | 2008 |
+|---|---|---|---|---|---|---|
+| **FX carry (DBV)** | −0.3% | **−0.10** | −34.0% | 0.42 | 0.24 | **−28.1%** |
+| Yen / funding (FXY) | −1.9% | −0.27 | −56.6% | −0.30 | −0.09 | +22.9% |
+| Dollar (UUP) | 1.6% | 0.08 | −22.2% | −0.17 | −0.23 | +4.9% |
+| High yield credit (HYG) | 4.7% | 0.36 | −34.2% | **0.65** | 0.34 | −17.6% |
+| IG credit (LQD) | 3.9% | 0.33 | −25.0% | 0.20 | 0.09 | +2.4% |
+| EM debt (EMB) | 4.3% | 0.33 | −34.7% | 0.38 | 0.25 | −2.1% |
+| **Credit premium (HYG−IEF)** | **0.9%** | **0.04** | **−46.9%** | **0.67** | 0.34 | **−31.2%** |
+| *[ref] bond carry (IEF)* | 3.2% | 0.30 | −23.9% | −0.28 | −0.11 | +17.9% |
+
+**The decisive test — correlation to equity in calm years vs in the crisis:**
+
+| Sleeve | calm | **crisis** |
+|---|---|---|
+| FX carry (DBV) | +0.34 | **+0.43** |
+| High yield credit (HYG) | +0.65 | +0.65 |
+| Credit premium (HYG−IEF) | +0.63 | **+0.69** |
+| *Bond carry (IEF)* | −0.24 | **−0.27** |
+
+- **FX carry is the textbook negative-skew trade** — negative Sharpe over 15 years, −28% in
+  2008, and correlation that *rises* into the crash. Note DBV's history ends 2023-03-16:
+  **the fund was liquidated.** The market retired this one without our help.
+- **Credit is equity beta in a bond costume.** Isolate the actual credit premium (high
+  yield minus duration) and it pays **0.9%/yr for a −47% drawdown**, at correlation 0.67
+  that *climbs to 0.69* exactly when you need it low. It is not a different return source;
+  it is the same risk repackaged with worse liquidity.
+- **Only IEF holds a negative correlation through crises** (−0.24 calm → −0.27 crisis) —
+  which is why bond carry won this field, and it still did not improve the live book.
+- **Credit default swaps proper are not retail-accessible** (ISDA agreements, institutional
+  minimums). The accessible version is options credit spreads — already prototyped and
+  rejected (92% win rate; two ordinary dips erased 87% of the gains).
+
+**Conclusion: the non-trend search is closed.** Of every candidate source — carry (bonds,
+FX), volatility premium (credit spreads/VRP), credit, and a plain beta anchor — none
+clears the bar on this book. The only genuinely uncorrelated sleeve that survives forward
+is **crypto-trend, which the live bot already runs.**
+
 ## Reproducibility
 
 - `scratchpad/fetch_data.py` — stdlib Yahoo fetch → `scratchpad/data/*.csv` (adjusted).
@@ -192,4 +238,5 @@ you later decide you want the deflationary insurance.
 - `scratchpad/study2.py` — carry variant, split-half robustness, BTC sleeve.
 - `scratchpad/plot_study.py` → `non_trend_sleeve.png` (growth of $1 + rolling Sharpe).
 - `scratchpad/compare_anchor.py` — live book with/without the anchor, total-return data.
+- `scratchpad/fx_credit_test.py` — FX carry and credit as sleeves, incl. crisis correlation.
 - All signals lagged one bar (no lookahead); returns dividend-adjusted; cash = BIL.
