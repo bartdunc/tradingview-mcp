@@ -1,8 +1,107 @@
-# TradingView MCP — Claude Instructions
+# CLAUDE.md
 
-68 tools for reading and controlling a live TradingView Desktop chart via CDP (port 9222).
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Decision Tree — Which Tool When
+## What this repo is
+
+Two independent projects share this repo:
+
+1. **`src/` — TradingView MCP server.** An MCP server (+ CLI) that reads and controls a live TradingView Desktop app over the Chrome DevTools Protocol (CDP, port 9222). 81 tools total (78 original + 3 morning-brief). No network calls beyond localhost:9222 — everything happens against the user's already-authenticated Desktop app.
+2. **`bot/` — Python trading bot.** A standalone Alpaca Markets paper/live trading bot (5 instruments, 3 strategies) with backtesting. It does not talk to TradingView or the MCP server at all — separate language, separate deployment, separate purpose. See `bot/README.md` for its own workflow (backtest → paper trade 2+ weeks → go live).
+
+Don't conflate the two: contributions to `src/` must stay a **read/control bridge to the local TradingView Desktop app** (see Scope below) — order execution and trading-bot features belong in `bot/`, not `src/`.
+
+## Commands
+
+### MCP server / CLI (Node, root of repo)
+```bash
+npm install
+npm start              # run the MCP server on stdio (src/server.js)
+npm link               # install the `tv` CLI globally for ad-hoc use
+
+npm test                # default: e2e + pine_analyze (requires TradingView running)
+npm run test:unit       # pine_analyze + cli — no TradingView needed (29 tests)
+npm run test:cli        # cli.test.js only
+npm run test:e2e        # e2e.test.js only — REQUIRES TradingView Desktop running with CDP
+npm run test:all        # everything
+npm run test:verbose    # spec reporter
+node --test tests/cli.test.js -t "specific test name"   # run a single test by name
+```
+`test:unit`/`test:cli` are the ones that run offline in CI-like conditions; `e2e` drives a real TradingView Desktop instance via CDP and will fail/hang without one running (`tv_launch` or `scripts/launch_tv_debug_*` first).
+
+There is no separate lint/typecheck script — this is plain ESM JavaScript with no build step (`"type": "module"` in `package.json`).
+
+### CLI usage (after `npm link`)
+```bash
+tv status                    # verify CDP connection
+tv symbol BTCUSD              # change chart symbol
+tv brief                      # run morning_brief
+tv pine compile               # compile Pine Script in the editor
+tv --help                     # full command list
+```
+Every MCP tool is mirrored as a `tv` subcommand (`src/cli/commands/*.js`), piping JSON to stdout for `jq`.
+
+### Pine Script pull/push helpers
+```bash
+node scripts/pine_pull.js     # read current Pine editor content → scripts/current.pine
+node scripts/pine_push.js     # push scripts/current.pine → Pine editor (see script for usage)
+```
+
+### Python bot (`bot/`, independent of the above)
+```bash
+pip install -r requirements.txt
+cp .env.example .env          # fill in Alpaca paper-trading keys
+python -m bot.backtest        # 6-month historical sim + report, writes backtest_results.png
+python -m bot.main            # live/paper loop (DRY_RUN=true by default — see config.py)
+python -m tests.test_live_path  # regression tests for the live execution path (pytest or standalone)
+```
+
+## Architecture (`src/`)
+
+Three-layer structure, repeated per feature domain (chart, data, pine, replay, alerts, watchlist, indicators, ui, pane, tab, morning, drawing, capture, health, batch):
+
+```
+src/core/<domain>.js   → business logic: builds a JS expression string, sends it via connection.js,
+                          shapes the result into { success, ... }. No MCP/CLI concerns here.
+src/tools/<domain>.js  → registers MCP tools (server.tool(name, description, zodSchema, handler)),
+                          each handler just calls the matching core function and wraps it with
+                          jsonResult() from src/tools/_format.js.
+src/cli/commands/<domain>.js → registers `tv` subcommands via src/cli/router.js, calling the
+                          same core functions core/ exposes.
+```
+`src/core/index.js` re-exports every core module as the package's `./core` subpath export (`import { chart, data, pine } from 'tradingview-mcp/core'`) — this is the layer to import from if reusing logic outside the MCP/CLI surface.
+
+`src/server.js` is the MCP entrypoint: constructs the `McpServer`, calls each `register*Tools(server)`, and connects a `StdioServerTransport`. The big instructions string passed to `McpServer` is the tool-selection guide the model sees at connect time — keep it in sync with the Decision Tree below when tools change.
+
+`src/connection.js` owns the single CDP client: `getClient()`/`connect()` find the TradingView chart target over `http://localhost:9222/json/list`, retry with exponential backoff, and expose `evaluate()`/`evaluateAsync()` to run JS in the page. `KNOWN_PATHS` documents the internal (undocumented) TradingView JS API surface reverse-engineered via live probing — e.g. `window.TradingViewApi._activeChartWidgetWV.value()` for the chart API, `window.TradingViewApi._replayApi` for replay. Anything in `core/` that talks to the chart goes through one of these paths.
+
+Reading custom Pine indicator drawings (not exposed by the normal chart data API) goes through the graphics primitives tree: `study._graphics._primitivesCollection.dwglines.get('lines').get(false)._primitivesDataById` (see `src/core/data.js` for lines/labels/tables/boxes).
+
+`src/wait.js` provides `waitForChartReady()`, used after symbol/timeframe changes since TradingView loads data asynchronously.
+
+```
+Claude Code ←→ MCP Server (stdio) ←→ CDP (localhost:9222) ←→ TradingView Desktop (Electron)
+```
+
+### Adding a new tool
+1. Add the core function to `src/core/<domain>.js` (or a new domain file).
+2. Register it in `src/tools/<domain>.js` with a zod schema, calling the core function and returning `jsonResult(...)`.
+3. Mirror it in `src/cli/commands/<domain>.js` if it should be CLI-accessible.
+4. If it's a new domain file, wire up `register*Tools` in `src/server.js` and the command import in `src/cli/index.js`.
+5. Update the instructions string in `src/server.js` and the Decision Tree section of this file if it changes tool-selection guidance.
+
+## Testing conventions
+
+- `tests/cli.test.js`, `tests/pine_analyze.test.js` — offline, no TradingView needed; run these when iterating without a Desktop instance.
+- `tests/e2e.test.js` — drives a live TradingView Desktop via CDP directly (own `evaluate`/`Input` helpers, not through `src/`), covering all tool domains. Needs `--remote-debugging-port=9222` running first.
+- `tests/test_live_path.py` — Python, pins specific bugs found in review of `bot/`'s live execution path (silent failures: no trade, no log, stop mis-armed). Run with `pytest` or `python -m tests.test_live_path`.
+- Uses Node's built-in `node:test` runner — no Jest/Mocha dependency.
+
+## Scope (from CONTRIBUTING.md)
+
+`src/` is a **local bridge only**. In scope: reliability of existing tools, CLI parity with MCP tools, bug fixes/tests, Pine dev workflow, UI automation of the local Desktop app. Out of scope: connecting directly to TradingView's servers, bypassing auth/subscription, scraping/caching/redistributing market data, automated trading/order execution, bundling TradingView's proprietary code, accessing other users' data. (`bot/` is exempt from the "no order execution" rule — it's a separate Alpaca-only project, not part of the TradingView bridge.)
+
+## Decision Tree — Which MCP Tool When
 
 ### "What's on my chart right now?"
 1. `chart_get_state` → symbol, timeframe, chart type, list of all indicators with entity IDs
@@ -23,6 +122,13 @@ Use `study_filter` parameter to target a specific indicator by name substring (e
 - `data_get_ohlcv` with `summary: true` → compact stats (high, low, range, change%, avg volume, last 5 bars)
 - `data_get_ohlcv` without summary → all bars (use `count` to limit, default 100)
 - `quote_get` → single latest price snapshot
+
+### "Run my morning routine"
+1. `morning_brief` → scans the watchlist in `rules.json`, reads indicators, returns structured bias data
+2. `session_save` → persist the brief to `~/.tradingview-mcp/sessions/YYYY-MM-DD.json`
+3. `session_get` → retrieve today's (or yesterday's) saved brief
+
+`rules.json` (gitignored; copy from `rules.example.json`) holds the user's watchlist, bias criteria, and risk rules that `morning_brief` applies automatically.
 
 ### "Analyze my chart" (full report workflow)
 1. `quote_get` → current price
@@ -50,6 +156,7 @@ Use `study_filter` parameter to target a specific indicator by name substring (e
 6. `pine_save` → save to TradingView cloud
 7. `pine_new` → create blank indicator/strategy/library
 8. `pine_open` → load a saved script by name
+9. `pine_analyze` / `pine_check` → offline static analysis / server-side compile check, no chart needed
 
 ### "Practice trading with replay"
 1. `replay_start` with `date: "2025-03-01"` → enter replay mode
@@ -79,6 +186,10 @@ Use `study_filter` parameter to target a specific indicator by name substring (e
 - `layout_switch` → load a saved layout by name
 - `ui_fullscreen` → toggle fullscreen
 - `capture_screenshot` → take a screenshot (regions: "full", "chart", "strategy_tester")
+
+### "Work with panes/tabs"
+- `pane_list`, `pane_set_layout` (`s`, `2h`, `2v`, `2x2`, `4`, `6`, `8`), `pane_focus`, `pane_set_symbol`
+- `tab_list`, `tab_new`, `tab_close`, `tab_switch`
 
 ### "TradingView isn't running"
 - `tv_launch` → auto-detect and launch TradingView with CDP on Mac/Win/Linux
@@ -120,10 +231,9 @@ These tools can return large payloads. Follow these rules to avoid context bloat
 - OHLCV capped at 500 bars, trades at 20 per request
 - Pine labels capped at 50 per study by default (pass `max_labels` to override)
 
-## Architecture
+## `bot/` conventions (Python, independent subsystem)
 
-```
-Claude Code ←→ MCP Server (stdio) ←→ CDP (localhost:9222) ←→ TradingView Desktop (Electron)
-```
-
-Pine graphics path: `study._graphics._primitivesCollection.dwglines.get('lines').get(false)._primitivesDataById`
+- Layered like `src/`: `bot/strategies/*.py` produce signals, `bot/engine.py` holds the shared per-bar decision logic used by both `bot/main.py` (live loop) and `bot/backtest.py` (historical sim), `bot/risk_manager.py` does ATR-based sizing/stops/circuit breaker, `bot/portfolio.py` tracks open positions + the cross-instrument correlation filter. `config.py` at repo root is the single place for instrument list, strategy params, and risk limits.
+- `DRY_RUN` (env var, default `true`) gates real order submission in `config.py` — logs the order it would submit instead of calling Alpaca. Flip to `false` only after paper trading has matched the backtest for 2+ weeks (`bot/README.md` Step 3/5).
+- Risk rules are enforced in code, not just documented: 1% max risk per trade (ATR-sized), trailing stops only ever tighten, a correlation filter blocks new BTC/USD longs while SPY and QQQ are both already long, and a 10% drawdown from equity peak trips a circuit breaker that flattens everything and halts the loop.
+- `docs/*.md` and `scratchpad/*.py` are research notes/experiments backing strategy decisions (e.g. `docs/BTC_CYCLE.md`, `docs/CROSS_SECTIONAL_MOMENTUM.md`) — read them before changing `config.py` instrument selection or strategy parameters, they usually explain why a parameter or instrument was rejected/kept.
