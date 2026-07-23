@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Leads Admin — Solar + Battery</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="wrap" style="max-width: 1100px;">
+    <header class="hero" style="margin-bottom:20px;">
+      <div class="eyebrow">Internal</div>
+      <h1 style="font-size:1.5rem;">Commercial Leads Dashboard</h1>
+    </header>
+
+    <div class="card">
+      <div class="toolbar">
+        <input type="password" id="token" placeholder="Admin token">
+        <button class="btn-secondary" id="btn-load">Load leads</button>
+        <select id="filter-grade">
+          <option value="">All grades</option>
+          <option value="hot">Hot</option>
+          <option value="warm">Warm</option>
+          <option value="cool">Cool</option>
+        </select>
+        <div class="spacer"></div>
+        <span id="count" style="color:var(--text-dim); font-size:0.85rem;"></span>
+        <a href="#" class="btn-link" id="btn-export">Export CSV</a>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th data-sort="created_at">Received</th>
+              <th data-sort="company_name">Company</th>
+              <th>Contact</th>
+              <th>Facility</th>
+              <th data-sort="monthly_bill_usd">Monthly bill</th>
+              <th>Interest</th>
+              <th>Timeline</th>
+              <th data-sort="score">Score</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="rows">
+            <tr><td colspan="9" style="color:var(--text-dim);">Enter admin token and click "Load leads".</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>

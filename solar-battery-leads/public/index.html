@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Commercial Solar + Battery Storage — Get a Quote</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">Commercial Energy Solutions</div>
+      <h1>Cut your facility's energy costs with solar + battery storage</h1>
+      <p>Tell us about your facility and we'll put together a no-obligation system design and savings estimate.</p>
+      <div class="badges">
+        <span class="badge">⚡ Solar PV</span>
+        <span class="badge">🔋 Battery storage</span>
+        <span class="badge">🏢 Commercial &amp; industrial</span>
+        <span class="badge">📉 ITC / depreciation eligible</span>
+      </div>
+    </header>
+
+    <div class="card">
+      <div class="progress">
+        <div class="seg active" data-seg="1"></div>
+        <div class="seg" data-seg="2"></div>
+        <div class="seg" data-seg="3"></div>
+        <div class="seg" data-seg="4"></div>
+      </div>
+
+      <form id="lead-form" novalidate>
+        <!-- Step 1: Company & contact -->
+        <div class="step active" data-step="1">
+          <h2>Tell us about your company</h2>
+          <div class="field">
+            <label for="company_name">Company name *</label>
+            <input id="company_name" name="company_name" required>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label for="contact_name">Your name *</label>
+              <input id="contact_name" name="contact_name" required>
+            </div>
+            <div class="field">
+              <label for="role">Your role</label>
+              <select id="role" name="role">
+                <option value="">Select one</option>
+                <option value="owner">Owner / Principal</option>
+                <option value="executive">Executive (CEO/CFO/COO)</option>
+                <option value="facilities">Facilities / Operations Director</option>
+                <option value="sustainability">Sustainability / Energy Manager</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label for="email">Work email *</label>
+              <input id="email" name="email" type="email" required>
+            </div>
+            <div class="field">
+              <label for="phone">Phone</label>
+              <input id="phone" name="phone" type="tel">
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Facility -->
+        <div class="step" data-step="2">
+          <h2>Where is the facility?</h2>
+          <div class="field">
+            <label for="facility_type">Facility type</label>
+            <select id="facility_type" name="facility_type">
+              <option value="">Select one</option>
+              <option value="warehouse">Warehouse / Distribution</option>
+              <option value="manufacturing">Manufacturing</option>
+              <option value="office">Office</option>
+              <option value="retail">Retail</option>
+              <option value="agriculture">Agriculture</option>
+              <option value="data-center">Data center</option>
+              <option value="multi-family">Multi-family housing</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="address">Street address</label>
+            <input id="address" name="address">
+          </div>
+          <div class="row">
+            <div class="field">
+              <label for="city">City</label>
+              <input id="city" name="city">
+            </div>
+            <div class="field">
+              <label for="state">State</label>
+              <input id="state" name="state">
+            </div>
+            <div class="field">
+              <label for="zip">ZIP</label>
+              <input id="zip" name="zip">
+            </div>
+          </div>
+          <div class="field">
+            <label>Do you own or lease the property?</label>
+            <div class="choice-grid" data-field="property_ownership">
+              <div class="choice" data-value="own">Own</div>
+              <div class="choice" data-value="lease-long-term">Lease (5+ yrs left)</div>
+              <div class="choice" data-value="lease">Lease</div>
+              <div class="choice" data-value="unsure">Not sure</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3: Energy usage & interest -->
+        <div class="step" data-step="3">
+          <h2>Energy usage &amp; what you're interested in</h2>
+          <div class="row">
+            <div class="field">
+              <label for="monthly_bill_usd">Average monthly electric bill ($)</label>
+              <input id="monthly_bill_usd" name="monthly_bill_usd" type="number" min="0" step="100">
+            </div>
+            <div class="field">
+              <label for="roof_land_sqft">Roof or land area available (sq ft)</label>
+              <input id="roof_land_sqft" name="roof_land_sqft" type="number" min="0" step="100">
+            </div>
+          </div>
+          <div class="field">
+            <label for="utility_provider">Utility provider</label>
+            <input id="utility_provider" name="utility_provider">
+          </div>
+          <div class="field">
+            <label>What are you interested in?</label>
+            <div class="choice-grid" data-field="interest">
+              <div class="choice" data-value="solar-battery">Solar + Battery</div>
+              <div class="choice" data-value="solar">Solar only</div>
+              <div class="choice" data-value="battery">Battery only</div>
+              <div class="choice" data-value="unsure">Not sure yet</div>
+            </div>
+          </div>
+          <div class="field">
+            <label>How important is backup power during outages?</label>
+            <div class="choice-grid" data-field="backup_power_priority">
+              <div class="choice" data-value="critical">Critical — can't afford downtime</div>
+              <div class="choice" data-value="moderate">Somewhat important</div>
+              <div class="choice" data-value="low">Not a priority</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 4: Timeline & budget -->
+        <div class="step" data-step="4">
+          <h2>Timeline &amp; budget</h2>
+          <div class="field">
+            <label>When are you looking to start a project?</label>
+            <div class="choice-grid" data-field="timeline">
+              <div class="choice" data-value="immediate">Within 3 months</div>
+              <div class="choice" data-value="3-6mo">3–6 months</div>
+              <div class="choice" data-value="6-12mo">6–12 months</div>
+              <div class="choice" data-value="12mo-plus">12+ months</div>
+              <div class="choice" data-value="researching">Just researching</div>
+            </div>
+          </div>
+          <div class="field">
+            <label for="budget_range">Estimated budget range (optional)</label>
+            <select id="budget_range" name="budget_range">
+              <option value="">Select one</option>
+              <option value="under-100k">Under $100k</option>
+              <option value="100k-500k">$100k–$500k</option>
+              <option value="500k-2m">$500k–$2M</option>
+              <option value="2m-plus">$2M+</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="notes">Anything else we should know?</label>
+            <textarea id="notes" name="notes" rows="3"></textarea>
+          </div>
+        </div>
+
+        <div class="error-text" id="form-error"></div>
+
+        <div class="actions">
+          <button type="button" class="btn-secondary" id="btn-back" disabled>Back</button>
+          <button type="button" class="btn-primary" id="btn-next">Next</button>
+          <button type="submit" class="btn-primary" id="btn-submit" style="display:none">Get my quote</button>
+        </div>
+      </form>
+
+      <div id="success" style="display:none">
+        <div class="icon">✅</div>
+        <h2>Thanks — request received!</h2>
+        <p>A member of our commercial energy team will reach out shortly with next steps.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
